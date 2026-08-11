@@ -1,0 +1,25 @@
+name: Alpaca Trading Bot
+
+on:
+  schedule:
+    # Пуска се всеки час, 24/7. Скриптът сам проверява дали пазарът е
+    # отворен (Alpaca /v2/clock) и излиза веднага, ако не е — така не се
+    # налага да смятаме UTC/лятно-зимно време в самия cron израз.
+    - cron: '0 * * * *'
+  workflow_dispatch: {}   # позволява ръчно пускане от GitHub бутона "Run workflow"
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run trading bot
+        env:
+          ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
+          ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
+        run: python3 trading_bot.py
