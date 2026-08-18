@@ -8,6 +8,9 @@ on:
     - cron: '0 * * * *'
   workflow_dispatch: {}   # позволява ръчно пускане от GitHub бутона "Run workflow"
 
+permissions:
+  contents: write   # нужно, за да може стъпката по-долу да commit-ва docs/status.json обратно в repo-то
+
 jobs:
   run-bot:
     runs-on: ubuntu-latest
@@ -23,3 +26,11 @@ jobs:
           ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
           ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
         run: python3 trading_bot.py
+
+      - name: Commit updated status snapshot
+        run: |
+          git config user.name "alpaca-bot"
+          git config user.email "actions@github.com"
+          git add docs/status.json
+          git diff --cached --quiet || git commit -m "Обнови status snapshot"
+          git push
