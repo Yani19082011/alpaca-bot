@@ -90,8 +90,9 @@ API_KEY = os.environ.get("ALPACA_API_KEY_ID", "")
 API_SECRET = os.environ.get("ALPACA_API_SECRET_KEY", "")
 
 # ntfy.sh — безплатни push известия без акаунт/токен. "Темата" действа
-# като таен адрес — никой друг не я знае, затова е достатъчно уникална.
-NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "yani-alpaca-10543be3")
+# като таен адрес — четем я САМО от GitHub Secret (не е записана тук в
+# кода), защото repo-то е public и всеки текст тук би бил видим за всички.
+NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "")
 
 TRADING_BASE = "https://paper-api.alpaca.markets"
 DATA_BASE = "https://data.alpaca.markets"
