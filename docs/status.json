@@ -1,31 +1,31 @@
 {
-  "updated_at": "2026-08-18T21:13:05.319716+00:00",
+  "updated_at": "2026-08-18T22:11:13.512200+00:00",
   "market_open": false,
   "next_open": "2026-08-19T09:30:00-04:00",
   "next_close": "2026-08-19T16:00:00-04:00",
   "account": {
-    "equity": "95996.81",
+    "equity": "95993.27",
     "cash": "76910.06",
-    "buying_power": "361083.14",
-    "portfolio_value": "95996.81"
+    "buying_power": "361073.23",
+    "portfolio_value": "95993.27"
   },
   "positions": [
     {
       "symbol": "NVDA",
       "qty": "45",
       "avg_entry_price": "219.95",
-      "current_price": "219.55",
-      "unrealized_pl": "-18",
-      "unrealized_plpc": "-0.00182",
+      "current_price": "219.45",
+      "unrealized_pl": "-22.5",
+      "unrealized_plpc": "-0.00227",
       "side": "long"
     },
     {
       "symbol": "SPY",
       "qty": "12",
       "avg_entry_price": "773.74",
-      "current_price": "767.25",
-      "unrealized_pl": "-77.88",
-      "unrealized_plpc": "-0.00839",
+      "current_price": "767.33",
+      "unrealized_pl": "-76.92",
+      "unrealized_plpc": "-0.00828",
       "side": "long"
     }
   ],
