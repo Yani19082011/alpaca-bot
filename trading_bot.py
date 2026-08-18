@@ -64,6 +64,13 @@ pre-market данни).
 Alpaca управлява изходите СЪРВЪРНО, денонощно, дори ботът да не се е
 пуснал в конкретния час.
 
+СТАТИЧНО ТАБЛО (docs/index.html, публикувано през GitHub Pages): при
+всеки run скриптът записва docs/status.json (equity, позиции, поръчки) —
+GitHub Actions го commit-ва обратно в repo-то (виж trading-bot.yml,
+стъпка "Commit updated status snapshot"). Таблото чете този файл директно
+от същия сайт — БЕЗ API ключове в браузъра и БЕЗ проблем с CORS (Alpaca
+блокира директни browser заявки към paper-api.alpaca.markets).
+
 Изисква следните environment variables (GitHub Actions secrets):
   ALPACA_API_KEY_ID
   ALPACA_API_SECRET_KEY
@@ -89,6 +96,13 @@ NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "yani-alpaca-10543be3")
 TRADING_BASE = "https://paper-api.alpaca.markets"
 DATA_BASE = "https://data.alpaca.markets"
 SOFIA_TZ = ZoneInfo("Europe/Sofia")
+
+# Пътят, в който се записва JSON снимка на текущото състояние — GitHub
+# Actions я commit-ва обратно в repo-то, а статичното табло в docs/index.html
+# (публикувано през GitHub Pages) я чете директно като обикновен файл от
+# СЪЩИЯ сайт. Така таблото никога няма нужда от API ключове в браузъра и
+# няма проблем с CORS (Alpaca блокира директни заявки от браузър).
+STATUS_PATH = "docs/status.json"
 
 # ==================== СТРАТЕГИЯ 1: blue-chip ====================
 WATCHLIST = ["SPY", "QQQ", "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA"]
@@ -289,6 +303,58 @@ def place_entry_order(symbol, qty, entry_price, stop_loss_pct, take_profit_pct, 
     if client_order_id:
         payload["client_order_id"] = client_order_id[:128]
     return _post(f"{TRADING_BASE}/v2/orders", payload)
+
+
+# ---------------- Status snapshot (за статичното табло) ----------------
+
+def write_status_snapshot(clock, account, positions, orders):
+    """Записва компактна JSON снимка в STATUS_PATH — commit-ва се обратно в
+    repo-то от workflow-а, за да може docs/index.html (GitHub Pages) да я
+    прочете директно, без API ключове и без CORS проблем."""
+    try:
+        status = {
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "market_open": bool(clock.get("is_open")),
+            "next_open": clock.get("next_open"),
+            "next_close": clock.get("next_close"),
+            "account": {
+                "equity": account.get("equity"),
+                "cash": account.get("cash"),
+                "buying_power": account.get("buying_power"),
+                "portfolio_value": account.get("portfolio_value"),
+            },
+            "positions": [
+                {
+                    "symbol": p.get("symbol"),
+                    "qty": p.get("qty"),
+                    "avg_entry_price": p.get("avg_entry_price"),
+                    "current_price": p.get("current_price"),
+                    "unrealized_pl": p.get("unrealized_pl"),
+                    "unrealized_plpc": p.get("unrealized_plpc"),
+                    "side": p.get("side"),
+                }
+                for p in positions
+            ],
+            "orders": [
+                {
+                    "symbol": o.get("symbol"),
+                    "side": o.get("side"),
+                    "qty": o.get("qty"),
+                    "status": o.get("status"),
+                    "filled_avg_price": o.get("filled_avg_price"),
+                    "client_order_id": o.get("client_order_id"),
+                    "submitted_at": o.get("submitted_at"),
+                }
+                for o in orders
+            ],
+        }
+        status_dir = os.path.dirname(STATUS_PATH)
+        if status_dir:
+            os.makedirs(status_dir, exist_ok=True)
+        with open(STATUS_PATH, "w", encoding="utf-8") as f:
+            json.dump(status, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"[status] Неуспешен запис на snapshot: {e}")
 
 
 # ---------------- Сигнали ----------------
@@ -507,6 +573,11 @@ def run():
         raise RuntimeError("Липсват ALPACA_API_KEY_ID / ALPACA_API_SECRET_KEY.")
 
     clock = get_clock()
+    account = get_account()
+    positions = get_positions()
+    today_orders = get_today_orders()
+    write_status_snapshot(clock, account, positions, today_orders)
+
     if not clock.get("is_open"):
         print(f"Пазарът е затворен (next open: {clock.get('next_open')}). Нищо за правене.")
         return
@@ -524,19 +595,15 @@ def run():
 
     today_str = now.strftime("%Y-%m-%d")
 
-    account = get_account()
     equity = float(account["equity"])
-    positions = get_positions()
     held_symbols = {p["symbol"] for p in positions}
+    traded_today = {o["symbol"] for o in today_orders}
 
     print(
         f"Equity: {equity:.2f} | Позиции: {len(positions)} | "
         f"Sofia {sofia_now.strftime('%H:%M')} | daytrade window: {in_daytrade_window} | "
         f"force-close: {should_force_close}"
     )
-
-    today_orders = get_today_orders()
-    traded_today = {o["symbol"] for o in today_orders}
 
     all_trades, all_errors = [], []
 
@@ -561,6 +628,14 @@ def run():
         all_trades.extend(trades)
         all_errors.extend(errors)
         held_symbols |= {t[1] for t in trades}
+
+    # Финална снимка — след като сделките (ако е имало) вече са изпълнени,
+    # за да показва таблото актуалното състояние, не това отпреди тях.
+    if all_trades:
+        try:
+            write_status_snapshot(clock, get_account(), get_positions(), get_today_orders())
+        except error.HTTPError as e:
+            print(f"[status] Неуспешно финално обновяване: {e}")
 
     if all_trades:
         lines = [f"🤖 Alpaca бот — {len(all_trades)} събитие(я):"]
