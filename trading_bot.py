@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Alpaca Paper Trading Bot — hourly runner, четири независими стратегии.
+Alpaca Paper Trading Bot — hourly runner, пет независими стратегии.
 
 Изпълнява се от GitHub Actions (безплатен cron, пълен интернет достъп) —
 не от Claude, защото Claude-облачните среди нямат мрежов достъп до Alpaca.
@@ -35,6 +35,19 @@ Alpaca Paper Trading Bot — hourly runner, четири независими с
                  watchlist, но никога не влизат в един и същ символ
                  едновременно — ако вече е държан от едната, другата го
                  прескача).
+
+СТРАТЕГИЯ 5 — "sp500-longterm": диверсифицирана кошница от утвърдени
+                 S&P 500 компании (различни сектори — финанси,
+                 здравеопазване, потребление, енергетика, индустрия —
+                 нарочно БЕЗ припокриване с другите watchlist-и), пак на
+                 базата на "златен кръст" (SMA50 > SMA200). Мисълта е за
+                 купи-и-държи за години, не за бърза търговия: БЕЗ
+                 take-profit (OTO поръчка), широк stop -15% (само
+                 катастрофична защита). 6% от equity на позиция, макс. 5
+                 едновременни позиции (до 30% от капитала разпределено
+                 между сектори). По-широка диверсификация от
+                 "ai-longterm", защото тук идеята е дългосрочен растеж на
+                 целия пазар, не залог само на един сектор.
 
 ВАЖНО за "проучвателния прозорец" (11:00–16:30 бг. време): това е преди
 отварянето на американската борса, така че по това време скриптът и
@@ -124,6 +137,20 @@ AI_DT_MIN_DOLLAR_VOLUME = 10_000_000  # оборот в $ до момента д
 AI_DT_WINDOW_START_MIN = 16 * 60 + 30   # 16:30 бг. време
 AI_DT_WINDOW_END_MIN = 22 * 60 + 30     # 22:30 бг. време
 AI_DT_FORCE_CLOSE_BUFFER_MIN = 20       # затваря се 20 мин. преди края
+
+# ==================== СТРАТЕГИЯ 5: sp500-longterm ====================
+# Диверсифицирана кошница от S&P 500 компании, различни сектори,
+# нарочно БЕЗ припокриване с WATCHLIST / PENNY_WATCHLIST / AI_WATCHLIST.
+SP500_WATCHLIST = [
+    "JPM", "JNJ", "PG", "KO", "XOM", "CVX", "HD", "WMT",
+    "UNH", "V", "MA", "DIS", "PEP", "COST", "MCD", "LLY",
+]
+SP500_LT_SMA_FAST = 50
+SP500_LT_SMA_SLOW = 200
+SP500_LT_BARS_LIMIT = 220
+SP500_LT_MAX_POSITIONS = 5
+SP500_LT_POSITION_PCT = 0.06
+SP500_LT_STOP_LOSS_PCT = 0.15   # катастрофична защита, не обичаен trading stop
 
 
 # ---------------- ntfy.sh известия ----------------
@@ -294,11 +321,13 @@ def penny_signal(bars):
     return breakout and volume_spike
 
 
-def ai_longterm_signal(bars):
-    """SMA50 > SMA200 ('златен кръст') и цената над SMA50 — потвърден тренд."""
+def golden_cross_signal(bars, sma_fast=AI_LT_SMA_FAST, sma_slow=AI_LT_SMA_SLOW):
+    """SMA(fast) > SMA(slow) ('златен кръст') и цената над SMA(fast) —
+    потвърден дългосрочен тренд. Използва се и от "ai-longterm", и от
+    "sp500-longterm" (по подразбиране 50/200, еднакво за двете)."""
     closes = [b["c"] for b in bars]
-    fast = sma(closes, AI_LT_SMA_FAST)
-    slow = sma(closes, AI_LT_SMA_SLOW)
+    fast = sma(closes, sma_fast)
+    slow = sma(closes, sma_slow)
     if fast is None or slow is None:
         return False
     return fast > slow and closes[-1] > fast
@@ -334,7 +363,12 @@ STRATEGIES = [
     {
         "label": "ai-longterm", "watchlist": AI_WATCHLIST, "max_positions": AI_LT_MAX_POSITIONS,
         "position_pct": AI_LT_POSITION_PCT, "stop_loss_pct": AI_LT_STOP_LOSS_PCT,
-        "take_profit_pct": None, "signal_fn": ai_longterm_signal, "bars_limit": AI_LT_BARS_LIMIT,
+        "take_profit_pct": None, "signal_fn": golden_cross_signal, "bars_limit": AI_LT_BARS_LIMIT,
+    },
+    {
+        "label": "sp500-longterm", "watchlist": SP500_WATCHLIST, "max_positions": SP500_LT_MAX_POSITIONS,
+        "position_pct": SP500_LT_POSITION_PCT, "stop_loss_pct": SP500_LT_STOP_LOSS_PCT,
+        "take_profit_pct": None, "signal_fn": golden_cross_signal, "bars_limit": SP500_LT_BARS_LIMIT,
     },
 ]
 
