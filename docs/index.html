@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alpaca Trading Bot — Табло</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page:           #f9f9f7;
+    --card:           #ffffff;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --border:         rgba(11,11,11,0.10);
+    --good:           #0ca30c;
+    --good-text:      #006300;
+    --warning:        #fab219;
+    --serious:        #ec835a;
+    --critical:       #d03b3b;
+    --slot-1: #2a78d6; /* blue-chip */
+    --slot-2: #eb6834; /* penny */
+    --slot-3: #1baf7a; /* ai-longterm */
+    --slot-4: #eda100; /* ai-daytrade */
+    --slot-5: #e87ba4; /* sp500-longterm */
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page:           #0d0d0d;
+      --card:           #201f1d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --gridline:       #2c2c2a;
+      --border:         rgba(255,255,255,0.10);
+      --good:           #0ca30c;
+      --good-text:      #0ca30c;
+      --warning:        #fab219;
+      --serious:        #ec835a;
+      --critical:       #e66767;
+      --slot-1: #3987e5;
+      --slot-2: #d95926;
+      --slot-3: #199e70;
+      --slot-4: #c98500;
+      --slot-5: #d55181;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page:           #0d0d0d;
+    --card:           #201f1d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --gridline:       #2c2c2a;
+    --border:         rgba(255,255,255,0.10);
+    --good:           #0ca30c;
+    --good-text:      #0ca30c;
+    --warning:        #fab219;
+    --serious:        #ec835a;
+    --critical:       #e66767;
+    --slot-1: #3987e5;
+    --slot-2: #d95926;
+    --slot-3: #199e70;
+    --slot-4: #c98500;
+    --slot-5: #d55181;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  body { padding: 24px 16px 64px; }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
+  }
+  .topbar h1 { font-size: 20px; font-weight: 700; margin: 0; }
+  .topbar .sub { color: var(--text-secondary); font-size: 13px; margin-top: 2px; }
+  .theme-btn {
+    border: 1px solid var(--border); background: var(--card); color: var(--text-primary);
+    border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer;
+  }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 20px; margin-bottom: 16px;
+  }
+  .card h2 { font-size: 14px; margin: 0 0 12px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+
+  .btn {
+    border: none; border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 600;
+    background: var(--slot-1); color: #fff; cursor: pointer;
+  }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .status-line { font-size: 13px; margin-top: 10px; display: none; }
+  .status-line.show { display: block; }
+  .status-line.ok { color: var(--good-text); }
+  .status-line.err { color: var(--critical); }
+
+  /* KPI row */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 700px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+  .stat-tile { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+  .stat-tile .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+  .stat-tile .value { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat-tile .delta { font-size: 13px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .delta.good { color: var(--good-text); }
+  .delta.critical { color: var(--critical); }
+  .delta.neutral { color: var(--text-muted); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    text-align: left; font-weight: 600; color: var(--text-muted); font-size: 11px;
+    text-transform: uppercase; letter-spacing: .02em; padding: 8px 10px;
+    border-bottom: 1px solid var(--gridline);
+  }
+  tbody td { padding: 9px 10px; border-bottom: 1px solid var(--gridline); font-variant-numeric: tabular-nums; }
+  tbody tr:last-child td { border-bottom: none; }
+  .num { text-align: right; }
+  .empty-state { color: var(--text-muted); font-size: 13px; padding: 20px 4px; text-align: center; }
+
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px;
+    font-weight: 600; color: #fff; white-space: nowrap;
+  }
+  .badge.blue-chip      { background: var(--slot-1); }
+  .badge.penny          { background: var(--slot-2); }
+  .badge.ai-longterm    { background: var(--slot-3); }
+  .badge.ai-daytrade    { background: var(--slot-4); }
+  .badge.sp500-longterm { background: var(--slot-5); }
+
+  .badge-market { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot.open { background: var(--good); }
+  .dot.closed { background: var(--text-muted); }
+
+  .strategy-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  @media (max-width: 700px) { .strategy-grid { grid-template-columns: 1fr; } }
+  .strategy-card { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .strategy-card .title { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .strategy-card .title strong { font-size: 14px; }
+  .strategy-card .row { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--text-secondary); padding: 3px 0; }
+  .strategy-card .row b { color: var(--text-primary); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .strategy-card .tickers { font-size: 12px; color: var(--text-muted); margin-top: 8px; line-height: 1.5; }
+
+  .footer-links { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; }
+  .footer-links a { color: var(--slot-1); text-decoration: none; }
+  .footer-links a:hover { text-decoration: underline; }
+
+  .refresh-row { display: flex; align-items: center; gap: 10px; justify-content: space-between; flex-wrap: wrap; margin-bottom: 14px; }
+  .last-updated { font-size: 12px; color: var(--text-muted); }
+  .info-note { font-size: 12px; color: var(--text-muted); margin-top: 10px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div>
+      <h1>🤖 Alpaca Trading Bot</h1>
+      <div class="sub">Табло за наблюдение — paper trading</div>
+    </div>
+    <button class="theme-btn" id="themeToggle">🌓 Тема</button>
+  </div>
+
+  <div class="card">
+    <h2>Статус на данните</h2>
+    <div class="refresh-row">
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap: wrap;">
+        <span class="badge-market" id="marketBadge"><span class="dot closed" id="marketDot"></span><span id="marketText">Зареждане…</span></span>
+        <div class="last-updated" id="lastUpdated">—</div>
+      </div>
+      <button class="btn" id="refreshBtn">Обнови сега</button>
+    </div>
+    <div class="status-line" id="statusLine"></div>
+    <div class="info-note">
+      Данните идват от <code>docs/status.json</code> — файл, който самият бот записва и commit-ва обратно в repo-то при всяко hourly пускане през GitHub Actions. Няма нужда от API ключове тук и няма проблем с CORS, защото файлът се чете от същия сайт (GitHub Pages), не директно от Alpaca. Затова обновяването е на всеки час (темпото на бота), не на живо на секунда.
+    </div>
+  </div>
+
+  <div class="kpi-row" id="kpiRow">
+    <div class="stat-tile"><div class="label">Equity</div><div class="value" id="kpiEquity">—</div><div class="delta neutral" id="kpiEquityDelta"></div></div>
+    <div class="stat-tile"><div class="label">Buying power</div><div class="value" id="kpiBuyingPower">—</div><div class="delta neutral">достъпни средства</div></div>
+    <div class="stat-tile"><div class="label">Отворени позиции</div><div class="value" id="kpiPositions">—</div><div class="delta neutral" id="kpiPositionsSub"></div></div>
+    <div class="stat-tile"><div class="label">Нереализирана П/З</div><div class="value" id="kpiPL">—</div><div class="delta neutral" id="kpiPLPct"></div></div>
+  </div>
+
+  <div class="card">
+    <h2>Отворени позиции</h2>
+    <div id="positionsWrap"><div class="empty-state">Зареждане…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Поръчки днес</h2>
+    <div id="ordersWrap"><div class="empty-state">Зареждане…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Стратегии (винаги видимо, без нужда от данни)</h2>
+    <div class="strategy-grid">
+
+      <div class="strategy-card">
+        <div class="title"><span class="badge blue-chip">blue-chip</span><strong>Ликвидни акции/ETF-и</strong></div>
+        <div class="row"><span>Сигнал</span><b>SMA(10) &gt; SMA(30)</b></div>
+        <div class="row"><span>Позиция</span><b>10% от equity</b></div>
+        <div class="row"><span>Stop-loss / Take-profit</span><b>-3% / +6%</b></div>
+        <div class="row"><span>Макс. позиции</span><b>3</b></div>
+        <div class="tickers">SPY · QQQ · AAPL · MSFT · NVDA · AMZN · GOOGL · META ·
