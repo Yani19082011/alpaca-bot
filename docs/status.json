@@ -1,97 +1,115 @@
 {
-  "updated_at": "2026-08-19T16:15:52.842242+00:00",
+  "updated_at": "2026-08-19T16:48:38.869475+00:00",
   "market_open": true,
   "next_open": "2026-08-20T09:30:00-04:00",
   "next_close": "2026-08-19T16:00:00-04:00",
   "account": {
-    "equity": "96102.86",
-    "cash": "30537.86",
-    "buying_power": "300052.29",
-    "portfolio_value": "96102.86"
+    "equity": "96089.25",
+    "cash": "24856.73",
+    "buying_power": "298877.96",
+    "portfolio_value": "96089.25"
   },
   "positions": [
     {
       "symbol": "AMD",
       "qty": "26",
       "avg_entry_price": "468.170769",
-      "current_price": "467.655",
-      "unrealized_pl": "-13.409994",
-      "unrealized_plpc": "-0.0011",
+      "current_price": "468.595",
+      "unrealized_pl": "11.030006",
+      "unrealized_plpc": "0.00091",
       "side": "long"
     },
     {
       "symbol": "AVGO",
       "qty": "19",
       "avg_entry_price": "361.67",
-      "current_price": "363.835",
-      "unrealized_pl": "41.135",
-      "unrealized_plpc": "0.00599",
+      "current_price": "364.105",
+      "unrealized_pl": "46.265",
+      "unrealized_plpc": "0.00673",
       "side": "long"
     },
     {
       "symbol": "COST",
       "qty": "5",
       "avg_entry_price": "972.42",
-      "current_price": "966.17",
-      "unrealized_pl": "-31.25",
-      "unrealized_plpc": "-0.00643",
+      "current_price": "966.5",
+      "unrealized_pl": "-29.6",
+      "unrealized_plpc": "-0.00609",
       "side": "long"
     },
     {
       "symbol": "MRVL",
       "qty": "50",
       "avg_entry_price": "234.56",
-      "current_price": "235.895",
-      "unrealized_pl": "66.75",
-      "unrealized_plpc": "0.00569",
+      "current_price": "236.34",
+      "unrealized_pl": "89",
+      "unrealized_plpc": "0.00759",
       "side": "long"
     },
     {
       "symbol": "NVDA",
       "qty": "45",
       "avg_entry_price": "219.95",
-      "current_price": "220.18",
-      "unrealized_pl": "10.35",
-      "unrealized_plpc": "0.00105",
+      "current_price": "219.36",
+      "unrealized_pl": "-26.55",
+      "unrealized_plpc": "-0.00268",
+      "side": "long"
+    },
+    {
+      "symbol": "ORCL",
+      "qty": "39",
+      "avg_entry_price": "145.67",
+      "current_price": "145.45",
+      "unrealized_pl": "-8.58",
+      "unrealized_plpc": "-0.00151",
       "side": "long"
     },
     {
       "symbol": "PLTR",
       "qty": "32",
       "avg_entry_price": "175.689062",
-      "current_price": "176.07",
-      "unrealized_pl": "12.190016",
-      "unrealized_plpc": "0.00217",
+      "current_price": "175.41",
+      "unrealized_pl": "-8.929984",
+      "unrealized_plpc": "-0.00159",
       "side": "long"
     },
     {
       "symbol": "SPY",
       "qty": "12",
       "avg_entry_price": "773.74",
-      "current_price": "771.72",
-      "unrealized_pl": "-24.24",
-      "unrealized_plpc": "-0.00261",
+      "current_price": "770.36",
+      "unrealized_pl": "-40.56",
+      "unrealized_plpc": "-0.00437",
       "side": "long"
     },
     {
       "symbol": "WMT",
       "qty": "44",
       "avg_entry_price": "116.27",
-      "current_price": "115.1",
-      "unrealized_pl": "-51.48",
-      "unrealized_plpc": "-0.01006",
+      "current_price": "115.44",
+      "unrealized_pl": "-36.52",
+      "unrealized_plpc": "-0.00714",
       "side": "long"
     }
   ],
   "orders": [
     {
       "symbol": "ORCL",
-      "side": "buy",
+      "side": "sell",
       "qty": "39",
       "status": "new",
       "filled_avg_price": null,
+      "client_order_id": "33d38823-3a9d-4fb4-9360-01e86420fe9a",
+      "submitted_at": "2026-08-19T16:15:56.619544Z"
+    },
+    {
+      "symbol": "ORCL",
+      "side": "buy",
+      "qty": "39",
+      "status": "filled",
+      "filled_avg_price": "145.67",
       "client_order_id": "ai-daytrade-ORCL-2026-08-19",
-      "submitted_at": "2026-08-19T16:15:52.723007202Z"
+      "submitted_at": "2026-08-19T16:15:52.723007Z"
     },
     {
       "symbol": "ORCL",
@@ -100,16 +118,7 @@
       "status": "held",
       "filled_avg_price": null,
       "client_order_id": "5a28b41b-815f-4d20-928c-deddae444f22",
-      "submitted_at": "2026-08-19T16:15:52.705769988Z"
-    },
-    {
-      "symbol": "ORCL",
-      "side": "sell",
-      "qty": "39",
-      "status": "held",
-      "filled_avg_price": null,
-      "client_order_id": "33d38823-3a9d-4fb4-9360-01e86420fe9a",
-      "submitted_at": "2026-08-19T16:15:52.705769988Z"
+      "submitted_at": "2026-08-19T16:15:52.70577Z"
     },
     {
       "symbol": "PLTR",
