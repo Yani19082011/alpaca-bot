@@ -216,4 +216,266 @@
         <div class="row"><span>Позиция</span><b>10% от equity</b></div>
         <div class="row"><span>Stop-loss / Take-profit</span><b>-3% / +6%</b></div>
         <div class="row"><span>Макс. позиции</span><b>3</b></div>
-        <div class="tickers">SPY · QQQ · AAPL · MSFT · NVDA · AMZN · GOOGL · META ·
+        <div class="tickers">SPY · QQQ · AAPL · MSFT · NVDA · AMZN · GOOGL · META · TSLA</div>
+      </div>
+
+      <div class="strategy-card">
+        <div class="title"><span class="badge penny">penny</span><strong>Penny stocks (&lt;$5)</strong></div>
+        <div class="row"><span>Сигнал</span><b>20-дн. breakout + volume spike</b></div>
+        <div class="row"><span>Позиция</span><b>3% от equity</b></div>
+        <div class="row"><span>Stop-loss / Take-profit</span><b>-10% / +20%</b></div>
+        <div class="row"><span>Макс. позиции</span><b>2</b></div>
+        <div class="tickers">HTZ · PLUG · UWMC · OPEN · NIO · AMC · BTBT · HIVE · SPCE · LAC · EOSE · BBAI</div>
+      </div>
+
+      <div class="strategy-card">
+        <div class="title"><span class="badge ai-longterm">ai-longterm</span><strong>AI сектор — дългосрочно</strong></div>
+        <div class="row"><span>Сигнал</span><b>SMA50 &gt; SMA200 ("златен кръст")</b></div>
+        <div class="row"><span>Позиция</span><b>8% от equity</b></div>
+        <div class="row"><span>Stop-loss / Take-profit</span><b>-20% (катастр.) / без TP</b></div>
+        <div class="row"><span>Макс. позиции</span><b>3</b></div>
+        <div class="tickers">PLTR · AMD · AVGO · SMCI · CRWD · SNOW · ARM · MRVL · ANET · MU · ORCL</div>
+      </div>
+
+      <div class="strategy-card">
+        <div class="title"><span class="badge ai-daytrade">ai-daytrade</span><strong>AI сектор — дневна търговия</strong></div>
+        <div class="row"><span>Сигнал</span><b>+1.5% от днешния open + обем</b></div>
+        <div class="row"><span>Позиция</span><b>6% от equity</b></div>
+        <div class="row"><span>Stop-loss / Take-profit</span><b>-2% / +4%</b></div>
+        <div class="row"><span>Прозорец (бг. време)</span><b>16:30 – 22:30</b></div>
+        <div class="row"><span>Макс. позиции</span><b>2</b></div>
+        <div class="tickers">Същите тикери като ai-longterm — затваря се задължително до края на прозореца, никога не пренася позиция за следващия ден.</div>
+      </div>
+
+      <div class="strategy-card">
+        <div class="title"><span class="badge sp500-longterm">sp500-longterm</span><strong>S&amp;P 500 — дългосрочно, диверсифицирано</strong></div>
+        <div class="row"><span>Сигнал</span><b>SMA50 &gt; SMA200 ("златен кръст")</b></div>
+        <div class="row"><span>Позиция</span><b>6% от equity</b></div>
+        <div class="row"><span>Stop-loss / Take-profit</span><b>-15% (катастр.) / без TP</b></div>
+        <div class="row"><span>Макс. позиции</span><b>5 (различни сектори)</b></div>
+        <div class="tickers">JPM · JNJ · PG · KO · XOM · CVX · HD · WMT · UNH · V · MA · DIS · PEP · COST · MCD · LLY</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Други места за наблюдение</h2>
+    <div class="footer-links">
+      <a href="https://app.alpaca.markets" target="_blank" rel="noopener">Alpaca dashboard →</a>
+      <a href="../actions" target="_blank" rel="noopener">GitHub Actions логове →</a>
+      <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy push известия →</a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var WATCHLIST = ["SPY","QQQ","AAPL","MSFT","NVDA","AMZN","GOOGL","META","TSLA"];
+  var PENNY_WATCHLIST = ["HTZ","PLUG","UWMC","OPEN","NIO","AMC","BTBT","HIVE","SPCE","LAC","EOSE","BBAI"];
+  var AI_WATCHLIST = ["PLTR","AMD","AVGO","SMCI","CRWD","SNOW","ARM","MRVL","ANET","MU","ORCL"];
+  var SP500_WATCHLIST = ["JPM","JNJ","PG","KO","XOM","CVX","HD","WMT","UNH","V","MA","DIS","PEP","COST","MCD","LLY"];
+
+  // ---------- theme toggle ----------
+  var themeBtn = document.getElementById("themeToggle");
+  themeBtn.addEventListener("click", function () {
+    var root = document.documentElement;
+    var current = root.getAttribute("data-theme");
+    if (current === "dark") { root.setAttribute("data-theme", "light"); }
+    else if (current === "light") { root.removeAttribute("data-theme"); }
+    else { root.setAttribute("data-theme", "dark"); }
+  });
+
+  // ---------- helpers ----------
+  function fmtMoney(n) {
+    if (n === null || n === undefined || isNaN(n)) return "—";
+    var sign = n < 0 ? "-" : "";
+    return sign + "$" + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function fmtPct(n) {
+    if (n === null || n === undefined || isNaN(n)) return "—";
+    var sign = n > 0 ? "+" : "";
+    return sign + n.toFixed(2) + "%";
+  }
+  function setText(el, text) { el.textContent = text; }
+  function clearChildren(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+
+  function classify(symbol, dtTagged) {
+    if (WATCHLIST.indexOf(symbol) !== -1) return "blue-chip";
+    if (PENNY_WATCHLIST.indexOf(symbol) !== -1) return "penny";
+    if (AI_WATCHLIST.indexOf(symbol) !== -1) return dtTagged ? "ai-daytrade" : "ai-longterm";
+    if (SP500_WATCHLIST.indexOf(symbol) !== -1) return "sp500-longterm";
+    return "—";
+  }
+
+  function badge(label) {
+    var span = document.createElement("span");
+    span.className = "badge " + (label === "—" ? "" : label);
+    span.textContent = label;
+    return span;
+  }
+
+  function showStatus(msg, ok) {
+    var el = document.getElementById("statusLine");
+    if (!msg) { el.className = "status-line"; return; }
+    el.textContent = msg;
+    el.className = "status-line show " + (ok ? "ok" : "err");
+  }
+
+  // ---------- render ----------
+  function renderKPIs(account, positions) {
+    setText(document.getElementById("kpiEquity"), fmtMoney(parseFloat(account.equity)));
+    setText(document.getElementById("kpiBuyingPower"), fmtMoney(parseFloat(account.buying_power)));
+    setText(document.getElementById("kpiPositions"), String(positions.length));
+
+    var totalPL = 0;
+    positions.forEach(function (p) { totalPL += parseFloat(p.unrealized_pl || 0); });
+    var plEl = document.getElementById("kpiPL");
+    var plPctEl = document.getElementById("kpiPLPct");
+    setText(plEl, fmtMoney(totalPL));
+    var avgPct = positions.length
+      ? positions.reduce(function (sum, p) { return sum + parseFloat(p.unrealized_plpc || 0); }, 0) / positions.length * 100
+      : 0;
+    setText(plPctEl, positions.length ? fmtPct(avgPct) + " ср." : "");
+    plPctEl.className = "delta " + (totalPL > 0 ? "good" : totalPL < 0 ? "critical" : "neutral");
+  }
+
+  function renderPositions(positions, dtTaggedSymbols) {
+    var wrap = document.getElementById("positionsWrap");
+    clearChildren(wrap);
+    if (!positions.length) {
+      var empty = document.createElement("div");
+      empty.className = "empty-state";
+      empty.textContent = "Няма отворени позиции в момента.";
+      wrap.appendChild(empty);
+      return;
+    }
+    var table = document.createElement("table");
+    var thead = document.createElement("thead");
+    thead.innerHTML = "<tr><th>Символ</th><th>Стратегия</th><th class='num'>Кол-во</th><th class='num'>Ср. вх. цена</th><th class='num'>Текуща цена</th><th class='num'>П/З $</th><th class='num'>П/З %</th></tr>";
+    table.appendChild(thead);
+    var tbody = document.createElement("tbody");
+    positions.forEach(function (p) {
+      var tr = document.createElement("tr");
+      var tdSym = document.createElement("td"); tdSym.textContent = p.symbol;
+      var tdStrat = document.createElement("td"); tdStrat.appendChild(badge(classify(p.symbol, dtTaggedSymbols.indexOf(p.symbol) !== -1)));
+      var tdQty = document.createElement("td"); tdQty.className = "num"; tdQty.textContent = p.qty;
+      var tdAvg = document.createElement("td"); tdAvg.className = "num"; tdAvg.textContent = fmtMoney(parseFloat(p.avg_entry_price));
+      var tdCur = document.createElement("td"); tdCur.className = "num"; tdCur.textContent = fmtMoney(parseFloat(p.current_price));
+      var pl = parseFloat(p.unrealized_pl || 0);
+      var plPct = parseFloat(p.unrealized_plpc || 0) * 100;
+      var tdPL = document.createElement("td"); tdPL.className = "num"; tdPL.textContent = fmtMoney(pl);
+      tdPL.style.color = pl > 0 ? "var(--good-text)" : pl < 0 ? "var(--critical)" : "var(--text-primary)";
+      var tdPLPct = document.createElement("td"); tdPLPct.className = "num"; tdPLPct.textContent = fmtPct(plPct);
+      tdPLPct.style.color = tdPL.style.color;
+      tr.appendChild(tdSym); tr.appendChild(tdStrat); tr.appendChild(tdQty);
+      tr.appendChild(tdAvg); tr.appendChild(tdCur); tr.appendChild(tdPL); tr.appendChild(tdPLPct);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+  }
+
+  function orderStrategyLabel(o) {
+    var coid = o.client_order_id || "";
+    if (coid.indexOf("ai-daytrade-") === 0) return "ai-daytrade";
+    if (coid.indexOf("ai-longterm-") === 0) return "ai-longterm";
+    if (coid.indexOf("sp500-longterm-") === 0) return "sp500-longterm";
+    if (coid.indexOf("penny-") === 0) return "penny";
+    if (coid.indexOf("blue-chip-") === 0) return "blue-chip";
+    return classify(o.symbol, false);
+  }
+
+  function renderOrders(orders) {
+    var wrap = document.getElementById("ordersWrap");
+    clearChildren(wrap);
+    if (!orders.length) {
+      var empty = document.createElement("div");
+      empty.className = "empty-state";
+      empty.textContent = "Няма поръчки днес.";
+      wrap.appendChild(empty);
+      return;
+    }
+    var table = document.createElement("table");
+    var thead = document.createElement("thead");
+    thead.innerHTML = "<tr><th>Символ</th><th>Стратегия</th><th>Страна</th><th class='num'>Кол-во</th><th>Статус</th><th class='num'>Цена</th></tr>";
+    table.appendChild(thead);
+    var tbody = document.createElement("tbody");
+    orders.slice(0, 30).forEach(function (o) {
+      var tr = document.createElement("tr");
+      var tdSym = document.createElement("td"); tdSym.textContent = o.symbol;
+      var tdStrat = document.createElement("td"); tdStrat.appendChild(badge(orderStrategyLabel(o)));
+      var tdSide = document.createElement("td"); tdSide.textContent = o.side;
+      var tdQty = document.createElement("td"); tdQty.className = "num"; tdQty.textContent = o.qty;
+      var tdStatus = document.createElement("td"); tdStatus.textContent = o.status;
+      var price = o.filled_avg_price ? parseFloat(o.filled_avg_price) : null;
+      var tdPrice = document.createElement("td"); tdPrice.className = "num"; tdPrice.textContent = price ? fmtMoney(price) : "—";
+      tr.appendChild(tdSym); tr.appendChild(tdStrat); tr.appendChild(tdSide);
+      tr.appendChild(tdQty); tr.appendChild(tdStatus); tr.appendChild(tdPrice);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+  }
+
+  function renderMarketBadge(status) {
+    var dot = document.getElementById("marketDot");
+    var text = document.getElementById("marketText");
+    if (status.market_open) {
+      dot.className = "dot open";
+      text.textContent = "Пазарът е отворен";
+    } else {
+      dot.className = "dot closed";
+      var next = status.next_open ? new Date(status.next_open).toLocaleString("bg-BG") : "";
+      text.textContent = "Пазарът е затворен" + (next ? " (отваря: " + next + ")" : "");
+    }
+  }
+
+  // ---------- main load ----------
+  function loadAll() {
+    var refreshBtn = document.getElementById("refreshBtn");
+    refreshBtn.disabled = true;
+    showStatus("", true);
+
+    fetch("status.json?t=" + Date.now())
+      .then(function (resp) {
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        return resp.json();
+      })
+      .then(function (status) {
+        var account = status.account || {};
+        var positions = status.positions || [];
+        var orders = status.orders || [];
+        var dtTagged = orders.filter(function (o) {
+          return (o.client_order_id || "").indexOf("ai-daytrade-") === 0 && o.status === "filled";
+        }).map(function (o) { return o.symbol; });
+
+        renderMarketBadge(status);
+        renderKPIs(account, positions);
+        renderPositions(positions, dtTagged);
+        renderOrders(orders);
+
+        var updated = status.updated_at ? new Date(status.updated_at).toLocaleString("bg-BG") : "—";
+        setText(document.getElementById("lastUpdated"), "Данни към: " + updated + " (обновява се от бота на всеки час)");
+        refreshBtn.disabled = false;
+      })
+      .catch(function (err) {
+        showStatus(
+          "Все още няма записани данни (status.json) — ботът трябва да е направил поне един run, след като му добавихме тази функция. " +
+          "Провери в GitHub Actions дали има завършен run, или виж данните направо в Alpaca dashboard. Техническа грешка: " + err.message,
+          false
+        );
+        refreshBtn.disabled = false;
+      });
+  }
+
+  document.getElementById("refreshBtn").addEventListener("click", loadAll);
+
+  loadAll();
+})();
+</script>
+</body>
+</html>
