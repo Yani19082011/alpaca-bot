@@ -1,31 +1,31 @@
 {
-  "updated_at": "2026-08-19T21:54:27.362702+00:00",
+  "updated_at": "2026-08-19T22:13:15.916681+00:00",
   "market_open": false,
   "next_open": "2026-08-20T09:30:00-04:00",
   "next_close": "2026-08-20T16:00:00-04:00",
   "account": {
-    "equity": "96068.92",
+    "equity": "96102.32",
     "cash": "36118.82",
-    "buying_power": "312335.56",
-    "portfolio_value": "96068.92"
+    "buying_power": "312429.08",
+    "portfolio_value": "96102.32"
   },
   "positions": [
     {
       "symbol": "AMD",
       "qty": "26",
       "avg_entry_price": "468.170769",
-      "current_price": "466.33",
-      "unrealized_pl": "-47.859994",
-      "unrealized_plpc": "-0.00393",
+      "current_price": "466.5",
+      "unrealized_pl": "-43.439994",
+      "unrealized_plpc": "-0.00357",
       "side": "long"
     },
     {
       "symbol": "AVGO",
       "qty": "19",
       "avg_entry_price": "361.67",
-      "current_price": "364.31",
-      "unrealized_pl": "50.16",
-      "unrealized_plpc": "0.0073",
+      "current_price": "365.29",
+      "unrealized_pl": "68.78",
+      "unrealized_plpc": "0.01001",
       "side": "long"
     },
     {
@@ -41,27 +41,27 @@
       "symbol": "MRVL",
       "qty": "50",
       "avg_entry_price": "234.56",
-      "current_price": "240.4",
-      "unrealized_pl": "292",
-      "unrealized_plpc": "0.0249",
+      "current_price": "240.09",
+      "unrealized_pl": "276.5",
+      "unrealized_plpc": "0.02358",
       "side": "long"
     },
     {
       "symbol": "NVDA",
       "qty": "45",
       "avg_entry_price": "219.95",
-      "current_price": "218.18",
-      "unrealized_pl": "-79.65",
-      "unrealized_plpc": "-0.00805",
+      "current_price": "218.6",
+      "unrealized_pl": "-60.75",
+      "unrealized_plpc": "-0.00614",
       "side": "long"
     },
     {
       "symbol": "SPY",
       "qty": "12",
       "avg_entry_price": "773.74",
-      "current_price": "769.13",
-      "unrealized_pl": "-55.32",
-      "unrealized_plpc": "-0.00596",
+      "current_price": "769.71",
+      "unrealized_pl": "-48.36",
+      "unrealized_plpc": "-0.00521",
       "side": "long"
     },
     {
