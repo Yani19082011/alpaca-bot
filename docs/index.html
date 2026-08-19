@@ -180,6 +180,7 @@
       <div style="display:flex; align-items:center; gap:12px; flex-wrap: wrap;">
         <span class="badge-market" id="marketBadge"><span class="dot closed" id="marketDot"></span><span id="marketText">Зареждане…</span></span>
         <div class="last-updated" id="lastUpdated">—</div>
+        <div class="last-updated" id="lastChecked"></div>
       </div>
       <button class="btn" id="refreshBtn">Обнови сега</button>
     </div>
@@ -435,12 +436,24 @@
   }
 
   // ---------- main load ----------
+  function markChecked() {
+    // Отделен клиентски маркер — обновява се при ВСЯКО кликване, дори
+    // данните да са същите (те се обновяват само веднъж на час, от бота).
+    // Така потребителят винаги вижда потвърждение, че бутонът е свършил нещо.
+    setText(
+      document.getElementById("lastChecked"),
+      "Последна проверка от теб: " + new Date().toLocaleTimeString("bg-BG")
+    );
+  }
+
   function loadAll() {
     var refreshBtn = document.getElementById("refreshBtn");
+    var originalLabel = refreshBtn.textContent;
     refreshBtn.disabled = true;
+    refreshBtn.textContent = "Проверява се…";
     showStatus("", true);
 
-    fetch("status.json?t=" + Date.now())
+    fetch("status.json?t=" + Date.now(), { cache: "no-store" })
       .then(function (resp) {
         if (!resp.ok) throw new Error("HTTP " + resp.status);
         return resp.json();
@@ -460,7 +473,9 @@
 
         var updated = status.updated_at ? new Date(status.updated_at).toLocaleString("bg-BG") : "—";
         setText(document.getElementById("lastUpdated"), "Данни към: " + updated + " (обновява се от бота на всеки час)");
+        markChecked();
         refreshBtn.disabled = false;
+        refreshBtn.textContent = originalLabel;
       })
       .catch(function (err) {
         showStatus(
@@ -468,7 +483,9 @@
           "Провери в GitHub Actions дали има завършен run, или виж данните направо в Alpaca dashboard. Техническа грешка: " + err.message,
           false
         );
+        markChecked();
         refreshBtn.disabled = false;
+        refreshBtn.textContent = originalLabel;
       });
   }
 
