@@ -1,13 +1,13 @@
 {
-  "updated_at": "2026-08-18T23:11:53.634680+00:00",
+  "updated_at": "2026-08-19T00:36:27.897952+00:00",
   "market_open": false,
   "next_open": "2026-08-19T09:30:00-04:00",
   "next_close": "2026-08-19T16:00:00-04:00",
   "account": {
-    "equity": "95973.22",
+    "equity": "95978.36",
     "cash": "76910.06",
-    "buying_power": "361017.08",
-    "portfolio_value": "95973.22"
+    "buying_power": "361031.48",
+    "portfolio_value": "95978.36"
   },
   "positions": [
     {
@@ -23,9 +23,9 @@
       "symbol": "SPY",
       "qty": "12",
       "avg_entry_price": "773.74",
-      "current_price": "766.9715",
-      "unrealized_pl": "-81.222",
-      "unrealized_plpc": "-0.00875",
+      "current_price": "767.4",
+      "unrealized_pl": "-76.08",
+      "unrealized_plpc": "-0.00819",
       "side": "long"
     }
   ],
