@@ -1,85 +1,76 @@
 {
-  "updated_at": "2026-08-20T19:01:54.099917+00:00",
+  "updated_at": "2026-08-20T19:37:48.416688+00:00",
   "market_open": true,
   "next_open": "2026-08-21T09:30:00-04:00",
   "next_close": "2026-08-20T16:00:00-04:00",
   "account": {
-    "equity": "95559.26",
-    "cash": "30414.11",
-    "buying_power": "304062.85",
-    "portfolio_value": "95559.26"
+    "equity": "95886.81",
+    "cash": "36216.58",
+    "buying_power": "311942.95",
+    "portfolio_value": "95886.81"
   },
   "positions": [
     {
       "symbol": "AMD",
       "qty": "26",
       "avg_entry_price": "468.170769",
-      "current_price": "464.2",
-      "unrealized_pl": "-103.239994",
-      "unrealized_plpc": "-0.00848",
+      "current_price": "466.36",
+      "unrealized_pl": "-47.079994",
+      "unrealized_plpc": "-0.00387",
       "side": "long"
     },
     {
       "symbol": "AVGO",
       "qty": "19",
       "avg_entry_price": "361.67",
-      "current_price": "363.48",
-      "unrealized_pl": "34.39",
-      "unrealized_plpc": "0.005",
+      "current_price": "364.9",
+      "unrealized_pl": "61.37",
+      "unrealized_plpc": "0.00893",
       "side": "long"
     },
     {
       "symbol": "COST",
       "qty": "5",
       "avg_entry_price": "972.42",
-      "current_price": "929.81",
-      "unrealized_pl": "-213.05",
-      "unrealized_plpc": "-0.04382",
+      "current_price": "930.82",
+      "unrealized_pl": "-208",
+      "unrealized_plpc": "-0.04278",
       "side": "long"
     },
     {
       "symbol": "MRVL",
       "qty": "50",
       "avg_entry_price": "234.56",
-      "current_price": "246.35",
-      "unrealized_pl": "589.5",
-      "unrealized_plpc": "0.05026",
-      "side": "long"
-    },
-    {
-      "symbol": "MU",
-      "qty": "6",
-      "avg_entry_price": "950.74",
-      "current_price": "958.63",
-      "unrealized_pl": "47.34",
-      "unrealized_plpc": "0.0083",
+      "current_price": "249.76",
+      "unrealized_pl": "760",
+      "unrealized_plpc": "0.0648",
       "side": "long"
     },
     {
       "symbol": "NVDA",
       "qty": "45",
       "avg_entry_price": "219.95",
-      "current_price": "216.5866",
-      "unrealized_pl": "-151.353",
-      "unrealized_plpc": "-0.01529",
+      "current_price": "217.245",
+      "unrealized_pl": "-121.725",
+      "unrealized_plpc": "-0.0123",
       "side": "long"
     },
     {
       "symbol": "SPY",
       "qty": "12",
       "avg_entry_price": "773.74",
-      "current_price": "763.25",
-      "unrealized_pl": "-125.88",
-      "unrealized_plpc": "-0.01356",
+      "current_price": "763.415",
+      "unrealized_pl": "-123.9",
+      "unrealized_plpc": "-0.01334",
       "side": "long"
     },
     {
       "symbol": "WMT",
       "qty": "44",
       "avg_entry_price": "116.27",
-      "current_price": "103.285",
-      "unrealized_pl": "-571.34",
-      "unrealized_plpc": "-0.11168",
+      "current_price": "103.015",
+      "unrealized_pl": "-583.22",
+      "unrealized_plpc": "-0.114",
       "side": "long"
     }
   ],
@@ -88,10 +79,19 @@
       "symbol": "MU",
       "side": "sell",
       "qty": "6",
-      "status": "new",
+      "status": "filled",
+      "filled_avg_price": "967.078333",
+      "client_order_id": "6abdf2fc-8fed-4d17-8e47-19600791df9a",
+      "submitted_at": "2026-08-20T19:37:40.611273Z"
+    },
+    {
+      "symbol": "MU",
+      "side": "sell",
+      "qty": "6",
+      "status": "canceled",
       "filled_avg_price": null,
       "client_order_id": "1ded7136-ce67-4287-8a22-261b14c44920",
-      "submitted_at": "2026-08-20T14:10:25.72670792Z"
+      "submitted_at": "2026-08-20T14:10:25.726708Z"
     },
     {
       "symbol": "MU",
@@ -100,16 +100,16 @@
       "status": "filled",
       "filled_avg_price": "950.74",
       "client_order_id": "ai-daytrade-MU-2026-08-20",
-      "submitted_at": "2026-08-20T14:10:24.972702825Z"
+      "submitted_at": "2026-08-20T14:10:24.972703Z"
     },
     {
       "symbol": "MU",
       "side": "sell",
       "qty": "6",
-      "status": "held",
+      "status": "canceled",
       "filled_avg_price": null,
       "client_order_id": "f44c3aea-ef37-40c4-99cc-579a17910f62",
-      "submitted_at": "2026-08-20T14:10:24.96340471Z"
+      "submitted_at": "2026-08-20T14:10:24.963405Z"
     }
   ]
 }
