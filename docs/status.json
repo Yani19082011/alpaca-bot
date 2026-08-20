@@ -1,85 +1,85 @@
 {
-  "updated_at": "2026-08-20T18:16:07.170308+00:00",
+  "updated_at": "2026-08-20T19:01:54.099917+00:00",
   "market_open": true,
   "next_open": "2026-08-21T09:30:00-04:00",
   "next_close": "2026-08-20T16:00:00-04:00",
   "account": {
-    "equity": "95416.43",
+    "equity": "95559.26",
     "cash": "30414.11",
-    "buying_power": "303662.94",
-    "portfolio_value": "95416.43"
+    "buying_power": "304062.85",
+    "portfolio_value": "95559.26"
   },
   "positions": [
     {
       "symbol": "AMD",
       "qty": "26",
       "avg_entry_price": "468.170769",
-      "current_price": "461.91",
-      "unrealized_pl": "-162.779994",
-      "unrealized_plpc": "-0.01337",
+      "current_price": "464.2",
+      "unrealized_pl": "-103.239994",
+      "unrealized_plpc": "-0.00848",
       "side": "long"
     },
     {
       "symbol": "AVGO",
       "qty": "19",
       "avg_entry_price": "361.67",
-      "current_price": "364.69",
-      "unrealized_pl": "57.38",
-      "unrealized_plpc": "0.00835",
+      "current_price": "363.48",
+      "unrealized_pl": "34.39",
+      "unrealized_plpc": "0.005",
       "side": "long"
     },
     {
       "symbol": "COST",
       "qty": "5",
       "avg_entry_price": "972.42",
-      "current_price": "935.685",
-      "unrealized_pl": "-183.675",
-      "unrealized_plpc": "-0.03778",
+      "current_price": "929.81",
+      "unrealized_pl": "-213.05",
+      "unrealized_plpc": "-0.04382",
       "side": "long"
     },
     {
       "symbol": "MRVL",
       "qty": "50",
       "avg_entry_price": "234.56",
-      "current_price": "244.3",
-      "unrealized_pl": "487",
-      "unrealized_plpc": "0.04152",
+      "current_price": "246.35",
+      "unrealized_pl": "589.5",
+      "unrealized_plpc": "0.05026",
       "side": "long"
     },
     {
       "symbol": "MU",
       "qty": "6",
       "avg_entry_price": "950.74",
-      "current_price": "948.2334",
-      "unrealized_pl": "-15.0396",
-      "unrealized_plpc": "-0.00264",
+      "current_price": "958.63",
+      "unrealized_pl": "47.34",
+      "unrealized_plpc": "0.0083",
       "side": "long"
     },
     {
       "symbol": "NVDA",
       "qty": "45",
       "avg_entry_price": "219.95",
-      "current_price": "216.5351",
-      "unrealized_pl": "-153.6705",
-      "unrealized_plpc": "-0.01553",
+      "current_price": "216.5866",
+      "unrealized_pl": "-151.353",
+      "unrealized_plpc": "-0.01529",
       "side": "long"
     },
     {
       "symbol": "SPY",
       "qty": "12",
       "avg_entry_price": "773.74",
-      "current_price": "763.455",
-      "unrealized_pl": "-123.42",
-      "unrealized_plpc": "-0.01329",
+      "current_price": "763.25",
+      "unrealized_pl": "-125.88",
+      "unrealized_plpc": "-0.01356",
       "side": "long"
     },
     {
       "symbol": "WMT",
       "qty": "44",
       "avg_entry_price": "116.27",
-      "current_price": "103.9451",
-      "unrealized_pl": "-542.2956",
-      "unrealized_plpc": "-0.106",
+      "current_price": "103.285",
+      "unrealized_pl": "-571.34",
+      "unrealized_plpc": "-0.11168",
       "side": "long"
     }
   ],
