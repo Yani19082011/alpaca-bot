@@ -103,6 +103,12 @@
     background: var(--slot-1); color: #fff; cursor: pointer;
   }
   .btn:disabled { opacity: .5; cursor: default; }
+  .btn-outline {
+    display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 16px; font-size: 13px; font-weight: 600; background: transparent;
+    color: var(--text-primary); text-decoration: none; cursor: pointer;
+  }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
   .status-line { font-size: 13px; margin-top: 10px; display: none; }
   .status-line.show { display: block; }
   .status-line.ok { color: var(--good-text); }
@@ -161,17 +167,50 @@
   .refresh-row { display: flex; align-items: center; gap: 10px; justify-content: space-between; flex-wrap: wrap; margin-bottom: 14px; }
   .last-updated { font-size: 12px; color: var(--text-muted); }
   .info-note { font-size: 12px; color: var(--text-muted); margin-top: 10px; line-height: 1.5; }
+
+  /* Lock screen */
+  .lock-screen {
+    position: fixed; inset: 0; background: var(--page); display: flex;
+    align-items: center; justify-content: center; z-index: 1000; padding: 16px;
+  }
+  .lock-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 28px 26px; max-width: 340px; width: 100%; text-align: center;
+  }
+  .lock-card h1 { font-size: 20px; margin: 0 0 6px; }
+  .lock-card .sub { color: var(--text-secondary); font-size: 13px; margin-bottom: 18px; }
+  .lock-card input {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--page); color: var(--text-primary); font-size: 14px; margin-bottom: 10px;
+    box-sizing: border-box;
+  }
+  .lock-card .btn { width: 100%; padding: 10px; }
+  .lock-error { color: var(--critical); font-size: 13px; margin-top: 10px; min-height: 16px; }
 </style>
 </head>
 <body>
-<div class="wrap">
+
+<div id="lockScreen" class="lock-screen">
+  <div class="lock-card">
+    <h1>🔒 Alpaca Trading Bot</h1>
+    <div class="sub">Въведи парола, за да видиш таблото</div>
+    <input type="password" id="lockPassword" placeholder="Парола" autocomplete="current-password">
+    <button class="btn" id="lockSubmit">Отключи</button>
+    <div class="lock-error" id="lockError"></div>
+  </div>
+</div>
+
+<div class="wrap" id="appWrap" style="display:none;">
 
   <div class="topbar">
     <div>
       <h1>🤖 Alpaca Trading Bot</h1>
       <div class="sub">Табло за наблюдение — paper trading</div>
     </div>
-    <button class="theme-btn" id="themeToggle">🌓 Тема</button>
+    <div style="display:flex; gap:8px;">
+      <button class="theme-btn" id="lockAgainBtn" title="Заключи таблото">🔒</button>
+      <button class="theme-btn" id="themeToggle">🌓 Тема</button>
+    </div>
   </div>
 
   <div class="card">
@@ -182,11 +221,17 @@
         <div class="last-updated" id="lastUpdated">—</div>
         <div class="last-updated" id="lastChecked"></div>
       </div>
-      <button class="btn" id="refreshBtn">Обнови сега</button>
+      <div class="btn-row">
+        <button class="btn" id="refreshBtn">Обнови сега</button>
+        <a class="btn-outline" id="runBotLink" href="https://github.com/Yani19082011/alpaca-bot/actions/workflows/trading-bot.yml" target="_blank" rel="noopener">Пусни бота сега →</a>
+      </div>
     </div>
     <div class="status-line" id="statusLine"></div>
     <div class="info-note">
-      Данните идват от <code>docs/status.json</code> — файл, който самият бот записва и commit-ва обратно в repo-то при всяко hourly пускане през GitHub Actions. Няма нужда от API ключове тук и няма проблем с CORS, защото файлът се чете от същия сайт (GitHub Pages), не директно от Alpaca. Затова обновяването е на всеки час (темпото на бота), не на живо на секунда.
+      Данните идват от <code>docs/status.json</code> — файл, който самият бот записва и commit-ва обратно в repo-то при всяко пускане през GitHub Actions (горе-долу на всеки час, невинаги точно). Няма нужда от API ключове тук и няма проблем с CORS, защото файлът се чете от същия сайт (GitHub Pages), не директно от Alpaca.<br>
+      <b>"Обнови сега"</b> само проверява дали вече има нов запис — не създава нови данни сам по себе си.<br>
+      <b>"Пусни бота сега →"</b> те отвежда в GitHub Actions, където натискаш зеления бутон <b>"Run workflow"</b> (горе вдясно) — ботът реално проверява цените веднага и до ~1 минута тук ще има чисто нови данни. Умишлено не може да стане с едно кликване direct от тук — за да сработи, ще трябваше ключовете на Alpaca акаунта да са видими в сайта, а точно това го избягваме.<br>
+      🔒 Данните в <code>status.json</code> са криптирани с паролата ти (AES-256) — файлът е нечетим гибериш за всеки без паролата, дори ако го отвори директно. Декриптирането става в браузъра ти, паролата никога не напуска компютъра ти.
     </div>
   </div>
 
@@ -281,6 +326,41 @@
   var PENNY_WATCHLIST = ["HTZ","PLUG","UWMC","OPEN","NIO","AMC","BTBT","HIVE","SPCE","LAC","EOSE","BBAI"];
   var AI_WATCHLIST = ["PLTR","AMD","AVGO","SMCI","CRWD","SNOW","ARM","MRVL","ANET","MU","ORCL"];
   var SP500_WATCHLIST = ["JPM","JNJ","PG","KO","XOM","CVX","HD","WMT","UNH","V","MA","DIS","PEP","COST","MCD","LLY"];
+
+  var LOCK_STORAGE_KEY = "alpacaDashboardPassword";
+  var sessionPassword = null;
+
+  // ---------- криптиране/декриптиране (AES-256-GCM, ключ = SHA-256(парола)) ----------
+  function base64ToBytes(b64) {
+    var bin = atob(b64);
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+
+  function decryptStatus(encB64, password) {
+    return crypto.subtle.digest("SHA-256", new TextEncoder().encode(password))
+      .then(function (keyBytes) {
+        return crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["decrypt"]);
+      })
+      .then(function (key) {
+        var raw = base64ToBytes(encB64);
+        var nonce = raw.slice(0, 12);
+        var ciphertext = raw.slice(12);
+        return crypto.subtle.decrypt({ name: "AES-GCM", iv: nonce }, key, ciphertext);
+      })
+      .then(function (buf) {
+        return JSON.parse(new TextDecoder().decode(buf));
+      });
+  }
+
+  function resolveStatus(raw, password) {
+    if (raw && typeof raw.enc === "string") {
+      return decryptStatus(raw.enc, password);
+    }
+    // Още няма криптирани данни (ботът не е пуснат с DASHBOARD_PASSWORD) — минаваме direct.
+    return Promise.resolve(raw);
+  }
 
   // ---------- theme toggle ----------
   var themeBtn = document.getElementById("themeToggle");
@@ -464,6 +544,31 @@
     );
   }
 
+  function fetchStatusRaw() {
+    return fetch("status.json?t=" + Date.now(), { cache: "no-store" }).then(function (resp) {
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      return resp.json();
+    });
+  }
+
+  function renderStatus(status) {
+    var account = status.account || {};
+    var positions = status.positions || [];
+    var orders = status.orders || [];
+    var dtTagged = orders.filter(function (o) {
+      return (o.client_order_id || "").indexOf("ai-daytrade-") === 0 && o.status === "filled";
+    }).map(function (o) { return o.symbol; });
+
+    renderMarketBadge(status);
+    renderKPIs(account, positions);
+    renderPositions(positions, dtTagged);
+    renderOrders(orders);
+
+    var updated = status.updated_at ? new Date(status.updated_at).toLocaleString("bg-BG") : "—";
+    setText(document.getElementById("lastUpdated"), "Данни към: " + updated + " (обновява се от бота на всеки час)");
+    markChecked();
+  }
+
   function loadAll() {
     var refreshBtn = document.getElementById("refreshBtn");
     var originalLabel = refreshBtn.textContent;
@@ -471,33 +576,16 @@
     refreshBtn.textContent = "Проверява се…";
     showStatus("", true);
 
-    fetch("status.json?t=" + Date.now(), { cache: "no-store" })
-      .then(function (resp) {
-        if (!resp.ok) throw new Error("HTTP " + resp.status);
-        return resp.json();
-      })
+    fetchStatusRaw()
+      .then(function (raw) { return resolveStatus(raw, sessionPassword); })
       .then(function (status) {
-        var account = status.account || {};
-        var positions = status.positions || [];
-        var orders = status.orders || [];
-        var dtTagged = orders.filter(function (o) {
-          return (o.client_order_id || "").indexOf("ai-daytrade-") === 0 && o.status === "filled";
-        }).map(function (o) { return o.symbol; });
-
-        renderMarketBadge(status);
-        renderKPIs(account, positions);
-        renderPositions(positions, dtTagged);
-        renderOrders(orders);
-
-        var updated = status.updated_at ? new Date(status.updated_at).toLocaleString("bg-BG") : "—";
-        setText(document.getElementById("lastUpdated"), "Данни към: " + updated + " (обновява се от бота на всеки час)");
-        markChecked();
+        renderStatus(status);
         refreshBtn.disabled = false;
         refreshBtn.textContent = originalLabel;
       })
       .catch(function (err) {
         showStatus(
-          "Все още няма записани данни (status.json) — ботът трябва да е направил поне един run, след като му добавихме тази функция. " +
+          "Все още няма записани данни (status.json), или паролата вече не пасва на новите данни. " +
           "Провери в GitHub Actions дали има завършен run, или виж данните направо в Alpaca dashboard. Техническа грешка: " + err.message,
           false
         );
@@ -509,7 +597,60 @@
 
   document.getElementById("refreshBtn").addEventListener("click", loadAll);
 
-  loadAll();
+  // ---------- заключен екран ----------
+  function showLockError(msg) {
+    document.getElementById("lockError").textContent = msg || "";
+  }
+
+  function unlockWith(password) {
+    showLockError("");
+    var submitBtn = document.getElementById("lockSubmit");
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Проверява се…";
+
+    fetchStatusRaw()
+      .then(function (raw) { return resolveStatus(raw, password); })
+      .then(function (status) {
+        sessionPassword = password;
+        try { localStorage.setItem(LOCK_STORAGE_KEY, password); } catch (e) {}
+        document.getElementById("lockScreen").style.display = "none";
+        document.getElementById("appWrap").style.display = "";
+        renderStatus(status);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Отключи";
+      })
+      .catch(function (err) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Отключи";
+        showLockError("Грешна парола (или временен проблем с връзката). Опитай пак.");
+      });
+  }
+
+  document.getElementById("lockSubmit").addEventListener("click", function () {
+    var pw = document.getElementById("lockPassword").value;
+    if (!pw) { showLockError("Въведи парола."); return; }
+    unlockWith(pw);
+  });
+  document.getElementById("lockPassword").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") document.getElementById("lockSubmit").click();
+  });
+  document.getElementById("lockAgainBtn").addEventListener("click", function () {
+    try { localStorage.removeItem(LOCK_STORAGE_KEY); } catch (e) {}
+    sessionPassword = null;
+    document.getElementById("lockPassword").value = "";
+    document.getElementById("appWrap").style.display = "none";
+    document.getElementById("lockScreen").style.display = "flex";
+  });
+
+  // Ако вече имаме запазена (правилна) парола от предишно посещение — отключваме автоматично.
+  (function tryAutoUnlock() {
+    var saved = null;
+    try { saved = localStorage.getItem(LOCK_STORAGE_KEY); } catch (e) {}
+    if (saved) {
+      document.getElementById("lockPassword").value = saved;
+      unlockWith(saved);
+    }
+  })();
 })();
 </script>
 </body>
