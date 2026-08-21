@@ -1,13 +1,13 @@
 {
-  "updated_at": "2026-08-21T05:51:18.634394+00:00",
+  "updated_at": "2026-08-21T06:20:09.463425+00:00",
   "market_open": false,
   "next_open": "2026-08-21T09:30:00-04:00",
   "next_close": "2026-08-21T16:00:00-04:00",
   "account": {
-    "equity": "96137.4",
+    "equity": "96185.37",
     "cash": "36216.58",
-    "buying_power": "312644.62",
-    "portfolio_value": "96137.4"
+    "buying_power": "312778.93",
+    "portfolio_value": "96185.37"
   },
   "positions": [
     {
@@ -23,9 +23,9 @@
       "symbol": "AVGO",
       "qty": "19",
       "avg_entry_price": "361.67",
-      "current_price": "365.96",
-      "unrealized_pl": "81.51",
-      "unrealized_plpc": "0.01186",
+      "current_price": "366.59",
+      "unrealized_pl": "93.48",
+      "unrealized_plpc": "0.0136",
       "side": "long"
     },
     {
@@ -41,36 +41,36 @@
       "symbol": "MRVL",
       "qty": "50",
       "avg_entry_price": "234.56",
-      "current_price": "250.68",
-      "unrealized_pl": "806",
-      "unrealized_plpc": "0.06872",
+      "current_price": "251.2",
+      "unrealized_pl": "832",
+      "unrealized_plpc": "0.07094",
       "side": "long"
     },
     {
       "symbol": "NVDA",
       "qty": "45",
       "avg_entry_price": "219.95",
-      "current_price": "217.4",
-      "unrealized_pl": "-114.75",
-      "unrealized_plpc": "-0.01159",
+      "current_price": "217.64",
+      "unrealized_pl": "-103.95",
+      "unrealized_plpc": "-0.0105",
       "side": "long"
     },
     {
       "symbol": "SPY",
       "qty": "12",
       "avg_entry_price": "773.74",
-      "current_price": "763.14",
-      "unrealized_pl": "-127.2",
-      "unrealized_plpc": "-0.0137",
+      "current_price": "763.44",
+      "unrealized_pl": "-123.6",
+      "unrealized_plpc": "-0.01331",
       "side": "long"
     },
     {
       "symbol": "WMT",
       "qty": "44",
       "avg_entry_price": "116.27",
-      "current_price": "104.1",
-      "unrealized_pl": "-535.48",
-      "unrealized_plpc": "-0.10467",
+      "current_price": "104",
+      "unrealized_pl": "-539.88",
+      "unrealized_plpc": "-0.10553",
       "side": "long"
     }
   ],
