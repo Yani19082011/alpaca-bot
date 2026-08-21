@@ -69,20 +69,31 @@ GitHub Actions го commit-ва обратно в repo-то (виж trading-bot.
 от същия сайт — БЕЗ API ключове в браузъра и БЕЗ проблем с CORS (Alpaca
 блокира директни browser заявки към paper-api.alpaca.markets).
 
+ПАРОЛА / КРИПТИРАНЕ: ако DASHBOARD_PASSWORD е зададена, status.json се
+записва криптиран (AES-256-GCM) — нечетим за никого без паролата, дори
+ако отвори суровия файл директно на GitHub. Таблото пита за парола и
+декриптира в браузъра (Web Crypto API), без паролата да напуска
+компютъра на потребителя.
+
 Изисква следните environment variables (GitHub Actions secrets):
   ALPACA_API_KEY_ID
   ALPACA_API_SECRET_KEY
   NTFY_TOPIC              (опционално — за push известия през ntfy.sh)
+  DASHBOARD_PASSWORD      (опционално, но силно препоръчително — криптира status.json)
 
-Използва само Python stdlib (urllib, zoneinfo) — не изисква pip install.
+Изисква и пакета "cryptography" (виж стъпка "Install dependencies" в
+trading-bot.yml) — единствената не-stdlib зависимост, само за AES.
 """
 import os
 import json
 import sys
+import base64
+import hashlib
 import traceback
 from urllib import request, error
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 API_KEY = os.environ.get("ALPACA_API_KEY_ID", "")
 API_SECRET = os.environ.get("ALPACA_API_SECRET_KEY", "")
@@ -91,6 +102,13 @@ API_SECRET = os.environ.get("ALPACA_API_SECRET_KEY", "")
 # като таен адрес — четем я САМО от GitHub Secret (не е записана тук в
 # кода), защото repo-то е public и всеки текст тук би бил видим за всички.
 NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "")
+
+# Парола за криптиране на docs/status.json — четем я САМО от GitHub Secret.
+# Ако е зададена, status.json се записва криптиран (AES-256-GCM) и е
+# нечетим за всеки, който няма паролата — дори ако отвори файла директно.
+# Таблото (docs/index.html) го декриптира в браузъра с Web Crypto API,
+# използвайки SHA-256 от същата парола като ключ (виж unlockWith() там).
+DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "")
 
 TRADING_BASE = "https://paper-api.alpaca.markets"
 DATA_BASE = "https://data.alpaca.markets"
@@ -320,6 +338,18 @@ def _safe_float(v):
         return None
 
 
+def _encrypt_json(obj, password):
+    """AES-256-GCM криптиране на JSON обект с ключ = SHA-256(password).
+    Връща base64 низ (nonce + ciphertext+tag), декриптируем в браузъра
+    със същия ключ извод чрез Web Crypto SubtleCrypto (виж docs/index.html)."""
+    plaintext = json.dumps(obj, ensure_ascii=False).encode("utf-8")
+    key = hashlib.sha256(password.encode("utf-8")).digest()
+    aesgcm = AESGCM(key)
+    nonce = os.urandom(12)
+    ciphertext = aesgcm.encrypt(nonce, plaintext, None)
+    return base64.b64encode(nonce + ciphertext).decode("ascii")
+
+
 def write_status_snapshot(clock, account, positions, orders):
     """Записва компактна JSON снимка в STATUS_PATH — commit-ва се обратно в
     repo-то от workflow-а, за да може docs/index.html (GitHub Pages) да я
@@ -381,11 +411,20 @@ def write_status_snapshot(clock, account, positions, orders):
                 for o in orders
             ],
         }
+        if DASHBOARD_PASSWORD:
+            payload = {"enc": _encrypt_json(status, DASHBOARD_PASSWORD)}
+        else:
+            print(
+                "[status] ПРЕДУПРЕЖДЕНИЕ: DASHBOARD_PASSWORD не е зададена — "
+                "status.json се пише БЕЗ криптиране (четим е от всеки)."
+            )
+            payload = status
+
         status_dir = os.path.dirname(STATUS_PATH)
         if status_dir:
             os.makedirs(status_dir, exist_ok=True)
         with open(STATUS_PATH, "w", encoding="utf-8") as f:
-            json.dump(status, f, ensure_ascii=False, indent=2)
+            json.dump(payload, f, ensure_ascii=False, indent=2)
     except Exception as e:
         print(f"[status] Неуспешен запис на snapshot: {e}")
 
