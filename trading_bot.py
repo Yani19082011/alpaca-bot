@@ -12,11 +12,9 @@ Alpaca Paper Trading Bot — hourly runner, пет независими стра
                  (<$5). 3% от equity, SL -10% / TP +20%, макс. 2 позиции.
 
 СТРАТЕГИЯ 3 — "ai-longterm": дългосрочен тренд (SMA50 > SMA200, "златен
-                 кръст") на watchlist от AI-сектора. Позицията се пуска
-                 БЕЗ фиксиран take-profit (OTO поръчка само със stop-loss)
-                 — идеята е да "язди" тренда, не да взима бърза печалба.
-                 Широк stop -20% (само катастрофична защита, не обичайна
-                 търговска граница). 8% от equity, макс. 3 позиции.
+                 кръст") на watchlist от AI-сектора. BRACKET поръчка:
+                 TP +20% / SL -20% (широк stop, катастрофична защита, не
+                 обичайна търговска граница). 8% от equity, макс. 3 позиции.
                  (Забележка: без отделен earnings feed — Alpaca не дава
                  такива данни безплатно, а добавянето на трети API само
                  за това би усложнило нещата излишно. Сигналът е чисто
@@ -41,8 +39,8 @@ Alpaca Paper Trading Bot — hourly runner, пет независими стра
                  здравеопазване, потребление, енергетика, индустрия —
                  нарочно БЕЗ припокриване с другите watchlist-и), пак на
                  базата на "златен кръст" (SMA50 > SMA200). Мисълта е за
-                 купи-и-държи за години, не за бърза търговия: БЕЗ
-                 take-profit (OTO поръчка), широк stop -15% (само
+                 купи-и-държи за години, не за бърза търговия: BRACKET
+                 поръчка TP +20% / SL -15% (широк stop, само
                  катастрофична защита). 6% от equity на позиция, макс. 5
                  едновременни позиции (до 30% от капитала разпределено
                  между сектори). По-широка диверсификация от
@@ -141,6 +139,7 @@ AI_LT_BARS_LIMIT = 220
 AI_LT_MAX_POSITIONS = 3
 AI_LT_POSITION_PCT = 0.08
 AI_LT_STOP_LOSS_PCT = 0.20   # катастрофична защита, не обичаен trading stop
+AI_LT_TAKE_PROFIT_PCT = 0.20  # взима печалбата на +20% вместо да чака безкрайно
 
 # -- 3b: ai-daytrade --
 AI_DT_MAX_POSITIONS = 2
@@ -166,6 +165,12 @@ SP500_LT_BARS_LIMIT = 220
 SP500_LT_MAX_POSITIONS = 5
 SP500_LT_POSITION_PCT = 0.06
 SP500_LT_STOP_LOSS_PCT = 0.15   # катастрофична защита, не обичаен trading stop
+SP500_LT_TAKE_PROFIT_PCT = 0.20  # взима печалбата на +20% вместо да чака безкрайно
+
+# ==================== Начален баланс (за "P/L общо от старта") ====================
+# Alpaca paper trading акаунтите тръгват по подразбиране с $100,000.
+# Ако си нулирал/презаредил акаунта с друга сума, смени числото тук.
+STARTING_BALANCE = 100_000.0
 
 
 # ---------------- ntfy.sh известия ----------------
@@ -308,11 +313,33 @@ def place_entry_order(symbol, qty, entry_price, stop_loss_pct, take_profit_pct, 
 
 # ---------------- Status snapshot (за статичното табло) ----------------
 
+def _safe_float(v):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
 def write_status_snapshot(clock, account, positions, orders):
     """Записва компактна JSON снимка в STATUS_PATH — commit-ва се обратно в
     repo-то от workflow-а, за да може docs/index.html (GitHub Pages) да я
     прочете директно, без API ключове и без CORS проблем."""
     try:
+        equity_val = _safe_float(account.get("equity"))
+        last_equity_val = _safe_float(account.get("last_equity"))
+
+        day_pl = None
+        day_pl_pct = None
+        if equity_val is not None and last_equity_val:
+            day_pl = equity_val - last_equity_val
+            day_pl_pct = day_pl / last_equity_val
+
+        total_pl = None
+        total_pl_pct = None
+        if equity_val is not None:
+            total_pl = equity_val - STARTING_BALANCE
+            total_pl_pct = total_pl / STARTING_BALANCE
+
         status = {
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "market_open": bool(clock.get("is_open")),
@@ -323,6 +350,11 @@ def write_status_snapshot(clock, account, positions, orders):
                 "cash": account.get("cash"),
                 "buying_power": account.get("buying_power"),
                 "portfolio_value": account.get("portfolio_value"),
+                "last_equity": account.get("last_equity"),
+                "day_pl": day_pl,
+                "day_pl_pct": day_pl_pct,
+                "total_pl": total_pl,
+                "total_pl_pct": total_pl_pct,
             },
             "positions": [
                 {
@@ -430,12 +462,12 @@ STRATEGIES = [
     {
         "label": "ai-longterm", "watchlist": AI_WATCHLIST, "max_positions": AI_LT_MAX_POSITIONS,
         "position_pct": AI_LT_POSITION_PCT, "stop_loss_pct": AI_LT_STOP_LOSS_PCT,
-        "take_profit_pct": None, "signal_fn": golden_cross_signal, "bars_limit": AI_LT_BARS_LIMIT,
+        "take_profit_pct": AI_LT_TAKE_PROFIT_PCT, "signal_fn": golden_cross_signal, "bars_limit": AI_LT_BARS_LIMIT,
     },
     {
         "label": "sp500-longterm", "watchlist": SP500_WATCHLIST, "max_positions": SP500_LT_MAX_POSITIONS,
         "position_pct": SP500_LT_POSITION_PCT, "stop_loss_pct": SP500_LT_STOP_LOSS_PCT,
-        "take_profit_pct": None, "signal_fn": golden_cross_signal, "bars_limit": SP500_LT_BARS_LIMIT,
+        "take_profit_pct": SP500_LT_TAKE_PROFIT_PCT, "signal_fn": golden_cross_signal, "bars_limit": SP500_LT_BARS_LIMIT,
     },
 ]
 
