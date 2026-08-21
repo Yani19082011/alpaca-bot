@@ -327,7 +327,6 @@
   var AI_WATCHLIST = ["PLTR","AMD","AVGO","SMCI","CRWD","SNOW","ARM","MRVL","ANET","MU","ORCL"];
   var SP500_WATCHLIST = ["JPM","JNJ","PG","KO","XOM","CVX","HD","WMT","UNH","V","MA","DIS","PEP","COST","MCD","LLY"];
 
-  var LOCK_STORAGE_KEY = "alpacaDashboardPassword";
   var sessionPassword = null;
 
   // ---------- криптиране/декриптиране (AES-256-GCM, ключ = SHA-256(парола)) ----------
@@ -612,7 +611,6 @@
       .then(function (raw) { return resolveStatus(raw, password); })
       .then(function (status) {
         sessionPassword = password;
-        try { localStorage.setItem(LOCK_STORAGE_KEY, password); } catch (e) {}
         document.getElementById("lockScreen").style.display = "none";
         document.getElementById("appWrap").style.display = "";
         renderStatus(status);
@@ -635,22 +633,13 @@
     if (e.key === "Enter") document.getElementById("lockSubmit").click();
   });
   document.getElementById("lockAgainBtn").addEventListener("click", function () {
-    try { localStorage.removeItem(LOCK_STORAGE_KEY); } catch (e) {}
     sessionPassword = null;
     document.getElementById("lockPassword").value = "";
     document.getElementById("appWrap").style.display = "none";
     document.getElementById("lockScreen").style.display = "flex";
   });
-
-  // Ако вече имаме запазена (правилна) парола от предишно посещение — отключваме автоматично.
-  (function tryAutoUnlock() {
-    var saved = null;
-    try { saved = localStorage.getItem(LOCK_STORAGE_KEY); } catch (e) {}
-    if (saved) {
-      document.getElementById("lockPassword").value = saved;
-      unlockWith(saved);
-    }
-  })();
+  // Паролата НЕ се запомня между посещения — при всяко отваряне на сайта
+  // (нова страница/презареждане) трябва да се въведе наново.
 })();
 </script>
 </body>
