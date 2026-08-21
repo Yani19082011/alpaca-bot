@@ -23,11 +23,15 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install dependencies
+        run: pip install cryptography
+
       - name: Run trading bot
         env:
           ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
           ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
         run: python3 trading_bot.py
 
       - name: Commit updated status snapshot
