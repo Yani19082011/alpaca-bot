@@ -183,6 +183,35 @@
   .pl-pos { color: var(--good-text); }
   .pl-neg { color: var(--critical); }
 
+  /* Календар с дневни резултати */
+  .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px; }
+  .cal-nav .cal-month-label { font-size: 14px; font-weight: 700; }
+  .cal-nav-btn {
+    border: 1px solid var(--border); background: var(--card); color: var(--text-primary);
+    border-radius: 8px; padding: 5px 12px; font-size: 13px; cursor: pointer;
+  }
+  .cal-weekdays {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-bottom: 6px;
+    font-size: 10.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .02em; text-align: center;
+  }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .cal-cell {
+    border: 1px solid var(--border); border-radius: 8px; padding: 5px 3px; min-height: 50px;
+    text-align: center; background: var(--surface-1);
+  }
+  .cal-cell.empty { border-color: transparent; background: transparent; }
+  .cal-cell .cal-daynum { font-size: 11px; color: var(--text-muted); }
+  .cal-cell.has-data { cursor: pointer; }
+  .cal-cell.has-data:hover { border-color: var(--slot-1); }
+  .cal-cell.selected { border-color: var(--slot-1); border-width: 2px; padding: 4px 2px; }
+  .cal-cell .cal-pl { font-weight: 700; font-size: 11.5px; margin-top: 3px; font-variant-numeric: tabular-nums; }
+  @media (max-width: 480px) {
+    .cal-cell { min-height: 40px; padding: 4px 2px; }
+    .cal-cell .cal-pl { font-size: 10px; }
+  }
+  .cal-detail { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--gridline); }
+  .cal-detail-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; font-size: 13.5px; }
+
   /* Lock screen */
   .lock-screen {
     position: fixed; inset: 0; background: var(--page); display: flex;
@@ -269,6 +298,22 @@
       Ботът ротира между 3 стратегии — по 1 на ден (детерминирано по датата, не на случаен принцип): <b>Моментум 🚀</b> (купува сила), <b>Отскок 🔄</b> (купува слабост, залага на bounce), <b>Пробив 📈</b> (купува нов дневен връх). Риск параметрите (позиция %, SL, TP) са ЕДНАКВИ и за трите — сравнението е честно, разликата е само в сигнала. Всяка вечер резултатът от затворените позиции се записва тук, за да видим след няколко дни коя работи най-добре.
     </div>
     <div id="daytradeLogWrap" style="margin-top:12px;"><div class="empty-state">Зареждане…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Календар — П/З по дни</h2>
+    <div class="cal-nav">
+      <button class="cal-nav-btn" id="calPrevBtn" type="button">← Пред. месец</button>
+      <span class="cal-month-label" id="calMonthLabel">—</span>
+      <button class="cal-nav-btn" id="calNextBtn" type="button">Следв. месец →</button>
+    </div>
+    <div class="cal-weekdays">
+      <div>Пон</div><div>Вт</div><div>Ср</div><div>Чет</div><div>Пет</div><div>Съб</div><div>Нед</div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="cal-detail" id="calDetail">
+      <div class="empty-state">Цъкни на ден с резултат, за да видиш какво е купил/продал ботът тогава.</div>
+    </div>
   </div>
 
   <div class="card">
@@ -675,6 +720,145 @@
     }
   }
 
+  // ---------- календар с дневни резултати ----------
+  var CAL_MONTH_NAMES = ["Януари", "Февруари", "Март", "Април", "Май", "Юни", "Юли", "Август", "Септември", "Октомври", "Ноември", "Декември"];
+  var calState = { year: null, month: null, logByDate: {}, selectedDate: null };
+
+  function calPad2(n) { return n < 10 ? "0" + n : String(n); }
+  function calDateStr(year, month, day) { return year + "-" + calPad2(month + 1) + "-" + calPad2(day); }
+
+  function renderCalendar(log) {
+    var byDate = {};
+    (log || []).forEach(function (e) { if (e && e.date) byDate[e.date] = e; });
+    calState.logByDate = byDate;
+    if (calState.year === null) {
+      var now = new Date();
+      calState.year = now.getFullYear();
+      calState.month = now.getMonth();
+    }
+    if (calState.selectedDate && !byDate[calState.selectedDate]) calState.selectedDate = null;
+    renderCalendarGrid();
+  }
+
+  function renderCalendarGrid() {
+    var year = calState.year, month = calState.month;
+    setText(document.getElementById("calMonthLabel"), CAL_MONTH_NAMES[month] + " " + year);
+
+    var grid = document.getElementById("calGrid");
+    clearChildren(grid);
+
+    var firstOfMonth = new Date(year, month, 1);
+    var startOffset = (firstOfMonth.getDay() + 6) % 7; // понеделник = 0
+    var daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    for (var i = 0; i < startOffset; i++) {
+      var pad = document.createElement("div");
+      pad.className = "cal-cell empty";
+      grid.appendChild(pad);
+    }
+
+    for (var day = 1; day <= daysInMonth; day++) {
+      var dateStr = calDateStr(year, month, day);
+      var entry = calState.logByDate[dateStr];
+      var cell = document.createElement("div");
+      cell.className = "cal-cell" + (entry ? " has-data" : "") + (dateStr === calState.selectedDate ? " selected" : "");
+
+      var dn = document.createElement("div");
+      dn.className = "cal-daynum";
+      dn.textContent = String(day);
+      cell.appendChild(dn);
+
+      if (entry) {
+        var pl = parseFloat(entry.realized_pl || 0);
+        var plEl = document.createElement("div");
+        plEl.className = "cal-pl";
+        plEl.textContent = (pl > 0 ? "+" : "") + fmtMoney(pl);
+        plEl.style.color = pl > 0 ? "var(--good-text)" : pl < 0 ? "var(--critical)" : "var(--text-muted)";
+        cell.appendChild(plEl);
+        cell.addEventListener("click", (function (ds) {
+          return function () {
+            calState.selectedDate = ds;
+            renderCalendarGrid();
+          };
+        })(dateStr));
+      }
+      grid.appendChild(cell);
+    }
+
+    renderCalendarDetail();
+  }
+
+  function renderCalendarDetail() {
+    var wrap = document.getElementById("calDetail");
+    clearChildren(wrap);
+    var entry = calState.selectedDate ? calState.logByDate[calState.selectedDate] : null;
+    if (!entry) {
+      var hint = document.createElement("div");
+      hint.className = "empty-state";
+      hint.textContent = "Цъкни на ден с резултат, за да видиш какво е купил/продал ботът тогава.";
+      wrap.appendChild(hint);
+      return;
+    }
+
+    var head = document.createElement("div");
+    head.className = "cal-detail-head";
+    var dateSpan = document.createElement("b");
+    dateSpan.textContent = entry.date;
+    head.appendChild(dateSpan);
+    head.appendChild(badge(STRATEGY_KEY_TO_BADGE[entry.strategy] || "—", entry.strategy_label || undefined));
+    var pl = parseFloat(entry.realized_pl || 0);
+    var plSpan = document.createElement("span");
+    plSpan.style.fontWeight = "700";
+    plSpan.style.color = pl > 0 ? "var(--good-text)" : pl < 0 ? "var(--critical)" : "var(--text-primary)";
+    plSpan.textContent = "Резултат: " + (pl > 0 ? "+" : "") + fmtMoney(pl);
+    head.appendChild(plSpan);
+    wrap.appendChild(head);
+
+    var trades = entry.trades || [];
+    if (!trades.length) {
+      var none = document.createElement("div");
+      none.className = "empty-state";
+      none.textContent = "Този ден няма записани сделки (нямало е сигнал за покупка).";
+      wrap.appendChild(none);
+      return;
+    }
+
+    var table = document.createElement("table");
+    var thead = document.createElement("thead");
+    thead.innerHTML = "<tr><th>Символ</th><th>Действие</th><th class='num'>Кол-во</th><th class='num'>Цена</th><th class='num'>П/З</th></tr>";
+    table.appendChild(thead);
+    var tbody = document.createElement("tbody");
+    trades.forEach(function (t) {
+      var tr = document.createElement("tr");
+      var tdSym = document.createElement("td"); tdSym.textContent = t.symbol;
+      var tdAction = document.createElement("td"); tdAction.textContent = t.type === "buy" ? "Купено" : "Продадено";
+      var tdQty = document.createElement("td"); tdQty.className = "num"; tdQty.textContent = String(t.qty);
+      var tdPrice = document.createElement("td"); tdPrice.className = "num"; tdPrice.textContent = fmtMoney(t.price);
+      var tdPl = document.createElement("td"); tdPl.className = "num";
+      if (t.type === "sell" && typeof t.pl === "number") {
+        tdPl.textContent = (t.pl > 0 ? "+" : "") + fmtMoney(t.pl);
+        tdPl.style.color = t.pl > 0 ? "var(--good-text)" : t.pl < 0 ? "var(--critical)" : "var(--text-primary)";
+      } else {
+        tdPl.textContent = "—";
+      }
+      tr.appendChild(tdSym); tr.appendChild(tdAction); tr.appendChild(tdQty); tr.appendChild(tdPrice); tr.appendChild(tdPl);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+  }
+
+  document.getElementById("calPrevBtn").addEventListener("click", function () {
+    calState.month--;
+    if (calState.month < 0) { calState.month = 11; calState.year--; }
+    renderCalendarGrid();
+  });
+  document.getElementById("calNextBtn").addEventListener("click", function () {
+    calState.month++;
+    if (calState.month > 11) { calState.month = 0; calState.year++; }
+    renderCalendarGrid();
+  });
+
   function renderMarketBadge(status) {
     var dot = document.getElementById("marketDot");
     var text = document.getElementById("marketText");
@@ -716,6 +900,7 @@
     renderPositions(positions, orders);
     renderOrders(orders);
     renderDaytradeExperiment(status.daytrade_today_strategy, status.daytrade_log || []);
+    renderCalendar(status.daytrade_log || []);
 
     var updated = status.updated_at ? new Date(status.updated_at).toLocaleString("bg-BG") : "—";
     setText(document.getElementById("lastUpdated"), "Данни към: " + updated + " (обновява се от бота на всеки час)");
