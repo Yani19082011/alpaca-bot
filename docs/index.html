@@ -25,6 +25,9 @@
     --slot-3: #1baf7a; /* ai-longterm */
     --slot-4: #eda100; /* ai-daytrade */
     --slot-5: #e87ba4; /* sp500-longterm */
+    --slot-6: #0e7490; /* daytrade-momentum */
+    --slot-7: #7c3aed; /* daytrade-reversal */
+    --slot-8: #92400e; /* daytrade-breakout */
   }
   @media (prefers-color-scheme: dark) {
     :root:where(:not([data-theme="light"])) {
@@ -47,6 +50,9 @@
       --slot-3: #199e70;
       --slot-4: #c98500;
       --slot-5: #d55181;
+      --slot-6: #22b8cf;
+      --slot-7: #9f7aea;
+      --slot-8: #c2740f;
     }
   }
   :root[data-theme="dark"] {
@@ -69,6 +75,9 @@
     --slot-3: #199e70;
     --slot-4: #c98500;
     --slot-5: #d55181;
+    --slot-6: #22b8cf;
+    --slot-7: #9f7aea;
+    --slot-8: #c2740f;
   }
 
   * { box-sizing: border-box; }
@@ -145,6 +154,9 @@
   .badge.ai-longterm    { background: var(--slot-3); }
   .badge.ai-daytrade    { background: var(--slot-4); }
   .badge.sp500-longterm { background: var(--slot-5); }
+  .badge.daytrade-momentum { background: var(--slot-6); }
+  .badge.daytrade-reversal { background: var(--slot-7); }
+  .badge.daytrade-breakout { background: var(--slot-8); }
 
   .badge-market { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); }
   .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
@@ -167,6 +179,9 @@
   .refresh-row { display: flex; align-items: center; gap: 10px; justify-content: space-between; flex-wrap: wrap; margin-bottom: 14px; }
   .last-updated { font-size: 12px; color: var(--text-muted); }
   .info-note { font-size: 12px; color: var(--text-muted); margin-top: 10px; line-height: 1.5; }
+  .exp-today-row { display: flex; align-items: center; gap: 8px; font-size: 13.5px; flex-wrap: wrap; }
+  .pl-pos { color: var(--good-text); }
+  .pl-neg { color: var(--critical); }
 
   /* Lock screen */
   .lock-screen {
@@ -245,6 +260,18 @@
   </div>
 
   <div class="card">
+    <h2>Дневен експеримент — 3 daytrade стратегии</h2>
+    <div class="exp-today-row">
+      <span>Днешната активна стратегия:</span>
+      <span id="todayStrategyBadge">—</span>
+    </div>
+    <div class="info-note" style="margin-top:6px;">
+      Ботът ротира между 3 стратегии — по 1 на ден (детерминирано по датата, не на случаен принцип): <b>Моментум 🚀</b> (купува сила), <b>Отскок 🔄</b> (купува слабост, залага на bounce), <b>Пробив 📈</b> (купува нов дневен връх). Риск параметрите (позиция %, SL, TP) са ЕДНАКВИ и за трите — сравнението е честно, разликата е само в сигнала. Всяка вечер резултатът от затворените позиции се записва тук, за да видим след няколко дни коя работи най-добре.
+    </div>
+    <div id="daytradeLogWrap" style="margin-top:12px;"><div class="empty-state">Зареждане…</div></div>
+  </div>
+
+  <div class="card">
     <h2>Отворени позиции</h2>
     <div id="positionsWrap"><div class="empty-state">Зареждане…</div></div>
   </div>
@@ -255,7 +282,46 @@
   </div>
 
   <div class="card">
-    <h2>Стратегии (винаги видимо, без нужда от данни)</h2>
+    <h2>🔥 Активни стратегии — 3-дневна ротация (day trading)</h2>
+    <div class="strategy-grid">
+
+      <div class="strategy-card">
+        <div class="title"><span class="badge daytrade-momentum">momentum</span><strong>Моментум 🚀</strong></div>
+        <div class="row"><span>Сигнал</span><b>Цена &gt; +1.5% от open + обем</b></div>
+        <div class="row"><span>Позиция</span><b>6% от equity</b></div>
+        <div class="row"><span>Stop-loss / Take-profit</span><b>-2% / +4%</b></div>
+        <div class="row"><span>Прозорец (бг. време)</span><b>16:30 – 22:30</b></div>
+        <div class="row"><span>Макс. позиции</span><b>2</b></div>
+        <div class="tickers">Купува СИЛА — залага на продължение на движението нагоре.</div>
+      </div>
+
+      <div class="strategy-card">
+        <div class="title"><span class="badge daytrade-reversal">reversal</span><strong>Отскок 🔄</strong></div>
+        <div class="row"><span>Сигнал</span><b>Цена &lt; -1.5% от open, но над дневния min + обем</b></div>
+        <div class="row"><span>Позиция</span><b>6% от equity</b></div>
+        <div class="row"><span>Stop-loss / Take-profit</span><b>-2% / +4%</b></div>
+        <div class="row"><span>Прозорец (бг. време)</span><b>16:30 – 22:30</b></div>
+        <div class="row"><span>Макс. позиции</span><b>2</b></div>
+        <div class="tickers">Купува СЛАБОСТ, която спира да пада — залага на bounce, обратно на momentum.</div>
+      </div>
+
+      <div class="strategy-card">
+        <div class="title"><span class="badge daytrade-breakout">breakout</span><strong>Пробив 📈</strong></div>
+        <div class="row"><span>Сигнал</span><b>Цена на/близо дневния max, той &gt; +0.5% от open + обем</b></div>
+        <div class="row"><span>Позиция</span><b>6% от equity</b></div>
+        <div class="row"><span>Stop-loss / Take-profit</span><b>-2% / +4%</b></div>
+        <div class="row"><span>Прозорец (бг. време)</span><b>16:30 – 22:30</b></div>
+        <div class="row"><span>Макс. позиции</span><b>2</b></div>
+        <div class="tickers">Купува ПРОБИВ на нов дневен връх — залага на продължение след пробив.</div>
+      </div>
+
+    </div>
+    <div class="info-note">Watchlist (и трите): SPY · QQQ · AAPL · MSFT · NVDA · AMZN · GOOGL · META · TSLA · PLTR · AMD · AVGO · SMCI · CRWD · SNOW · ARM · MRVL · ANET · MU · ORCL. Само 1 стратегия е активна на ден (виж картата "Дневен експеримент" по-горе), никога не се пренася позиция за следващия ден.</div>
+  </div>
+
+  <div class="card">
+    <h2>Стари стратегии (вече не отварят нови позиции)</h2>
+    <div class="info-note" style="margin-bottom:10px;">Позициите, отворени от тези преди пивота към day trading, си остават и се управляват от собствените си stop-loss/take-profit поръчки в Alpaca — само таблото ги показва, докато не се затворят.</div>
     <div class="strategy-grid">
 
       <div class="strategy-card">
@@ -292,7 +358,7 @@
         <div class="row"><span>Stop-loss / Take-profit</span><b>-2% / +4%</b></div>
         <div class="row"><span>Прозорец (бг. време)</span><b>16:30 – 22:30</b></div>
         <div class="row"><span>Макс. позиции</span><b>2</b></div>
-        <div class="tickers">Същите тикери като ai-longterm — затваря се задължително до края на прозореца, никога не пренася позиция за следващия ден.</div>
+        <div class="tickers">Заменена от новите 3 ротиращи се daytrade стратегии по-горе.</div>
       </div>
 
       <div class="strategy-card">
@@ -385,18 +451,50 @@
   function setText(el, text) { el.textContent = text; }
   function clearChildren(el) { while (el.firstChild) el.removeChild(el.firstChild); }
 
-  function classify(symbol, dtTagged) {
+  // Легаси fallback — само по watchlist членство, ползва се когато не
+  // намерим съвпадащ client_order_id (напр. много стари позиции).
+  function classify(symbol) {
     if (WATCHLIST.indexOf(symbol) !== -1) return "blue-chip";
     if (PENNY_WATCHLIST.indexOf(symbol) !== -1) return "penny";
-    if (AI_WATCHLIST.indexOf(symbol) !== -1) return dtTagged ? "ai-daytrade" : "ai-longterm";
+    if (AI_WATCHLIST.indexOf(symbol) !== -1) return "ai-longterm";
     if (SP500_WATCHLIST.indexOf(symbol) !== -1) return "sp500-longterm";
     return "—";
   }
 
-  function badge(label) {
+  // Основен начин на разпознаване — по префикса на client_order_id.
+  // Работи еднакво добре за легаси стратегиите и за новите 3 daytrade.
+  function labelFromCoid(coid) {
+    coid = coid || "";
+    if (coid.indexOf("daytrade-momentum-") === 0) return "daytrade-momentum";
+    if (coid.indexOf("daytrade-reversal-") === 0) return "daytrade-reversal";
+    if (coid.indexOf("daytrade-breakout-") === 0) return "daytrade-breakout";
+    if (coid.indexOf("ai-daytrade-") === 0) return "ai-daytrade";
+    if (coid.indexOf("ai-longterm-") === 0) return "ai-longterm";
+    if (coid.indexOf("sp500-longterm-") === 0) return "sp500-longterm";
+    if (coid.indexOf("penny-") === 0) return "penny";
+    if (coid.indexOf("blue-chip-") === 0) return "blue-chip";
+    return null;
+  }
+
+  function classifyBySymbolOrders(symbol, orders) {
+    for (var i = 0; i < orders.length; i++) {
+      if (orders[i].symbol !== symbol) continue;
+      var label = labelFromCoid(orders[i].client_order_id);
+      if (label) return label;
+    }
+    return classify(symbol);
+  }
+
+  var BADGE_TEXT = {
+    "daytrade-momentum": "моментум",
+    "daytrade-reversal": "отскок",
+    "daytrade-breakout": "пробив",
+  };
+
+  function badge(label, text) {
     var span = document.createElement("span");
     span.className = "badge " + (label === "—" ? "" : label);
-    span.textContent = label;
+    span.textContent = text || BADGE_TEXT[label] || label;
     return span;
   }
 
@@ -441,7 +539,7 @@
     totalPLPctEl.className = "delta " + (totalAcctPL > 0 ? "good" : totalAcctPL < 0 ? "critical" : "neutral");
   }
 
-  function renderPositions(positions, dtTaggedSymbols) {
+  function renderPositions(positions, orders) {
     var wrap = document.getElementById("positionsWrap");
     clearChildren(wrap);
     if (!positions.length) {
@@ -459,7 +557,7 @@
     positions.forEach(function (p) {
       var tr = document.createElement("tr");
       var tdSym = document.createElement("td"); tdSym.textContent = p.symbol;
-      var tdStrat = document.createElement("td"); tdStrat.appendChild(badge(classify(p.symbol, dtTaggedSymbols.indexOf(p.symbol) !== -1)));
+      var tdStrat = document.createElement("td"); tdStrat.appendChild(badge(classifyBySymbolOrders(p.symbol, orders)));
       var tdQty = document.createElement("td"); tdQty.className = "num"; tdQty.textContent = p.qty;
       var tdAvg = document.createElement("td"); tdAvg.className = "num"; tdAvg.textContent = fmtMoney(parseFloat(p.avg_entry_price));
       var tdCur = document.createElement("td"); tdCur.className = "num"; tdCur.textContent = fmtMoney(parseFloat(p.current_price));
@@ -478,13 +576,7 @@
   }
 
   function orderStrategyLabel(o) {
-    var coid = o.client_order_id || "";
-    if (coid.indexOf("ai-daytrade-") === 0) return "ai-daytrade";
-    if (coid.indexOf("ai-longterm-") === 0) return "ai-longterm";
-    if (coid.indexOf("sp500-longterm-") === 0) return "sp500-longterm";
-    if (coid.indexOf("penny-") === 0) return "penny";
-    if (coid.indexOf("blue-chip-") === 0) return "blue-chip";
-    return classify(o.symbol, false);
+    return labelFromCoid(o.client_order_id) || classify(o.symbol);
   }
 
   function renderOrders(orders) {
@@ -517,6 +609,70 @@
     });
     table.appendChild(tbody);
     wrap.appendChild(table);
+  }
+
+  var STRATEGY_KEY_TO_BADGE = {
+    momentum: "daytrade-momentum",
+    reversal: "daytrade-reversal",
+    breakout: "daytrade-breakout",
+  };
+
+  function renderDaytradeExperiment(todayStrategy, log) {
+    var todayEl = document.getElementById("todayStrategyBadge");
+    clearChildren(todayEl);
+    if (todayStrategy && todayStrategy.key) {
+      todayEl.appendChild(badge(STRATEGY_KEY_TO_BADGE[todayStrategy.key] || "—", todayStrategy.label || undefined));
+    } else {
+      todayEl.textContent = "—";
+    }
+
+    var wrap = document.getElementById("daytradeLogWrap");
+    clearChildren(wrap);
+    if (!log.length) {
+      var empty = document.createElement("div");
+      empty.className = "empty-state";
+      empty.textContent = "Още няма записани дни от експеримента — ще се появят тук след първия завършен daytrade ден.";
+      wrap.appendChild(empty);
+      return;
+    }
+
+    var table = document.createElement("table");
+    var thead = document.createElement("thead");
+    thead.innerHTML = "<tr><th>Дата</th><th>Стратегия</th><th class='num'>Сделки</th><th class='num'>Резултат</th></tr>";
+    table.appendChild(thead);
+    var tbody = document.createElement("tbody");
+    log.slice().reverse().forEach(function (entry) {
+      var tr = document.createElement("tr");
+      var tdDate = document.createElement("td"); tdDate.textContent = entry.date || "—";
+      var tdStrat = document.createElement("td");
+      tdStrat.appendChild(badge(STRATEGY_KEY_TO_BADGE[entry.strategy] || "—", entry.strategy_label || undefined));
+      var tdTrades = document.createElement("td"); tdTrades.className = "num"; tdTrades.textContent = String(entry.trades_closed || 0);
+      var pl = parseFloat(entry.realized_pl || 0);
+      var tdPL = document.createElement("td"); tdPL.className = "num"; tdPL.textContent = fmtMoney(pl);
+      tdPL.style.color = pl > 0 ? "var(--good-text)" : pl < 0 ? "var(--critical)" : "var(--text-primary)";
+      tr.appendChild(tdDate); tr.appendChild(tdStrat); tr.appendChild(tdTrades); tr.appendChild(tdPL);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+
+    if (log.length >= 2) {
+      var sums = {}, counts = {}, labelsByKey = {};
+      log.forEach(function (e) {
+        sums[e.strategy] = (sums[e.strategy] || 0) + parseFloat(e.realized_pl || 0);
+        counts[e.strategy] = (counts[e.strategy] || 0) + 1;
+        labelsByKey[e.strategy] = e.strategy_label || e.strategy;
+      });
+      var summary = document.createElement("div");
+      summary.className = "info-note";
+      summary.style.marginTop = "10px";
+      var parts = Object.keys(sums).map(function (key) {
+        var avg = sums[key] / counts[key];
+        return labelsByKey[key] + ": ср. " + fmtMoney(avg) + "/ден (" + counts[key] + " дни)";
+      });
+      summary.textContent = "Обобщение: " + parts.join(" · ");
+      wrap.appendChild(summary);
+    }
   }
 
   function renderMarketBadge(status) {
@@ -554,14 +710,12 @@
     var account = status.account || {};
     var positions = status.positions || [];
     var orders = status.orders || [];
-    var dtTagged = orders.filter(function (o) {
-      return (o.client_order_id || "").indexOf("ai-daytrade-") === 0 && o.status === "filled";
-    }).map(function (o) { return o.symbol; });
 
     renderMarketBadge(status);
     renderKPIs(account, positions);
-    renderPositions(positions, dtTagged);
+    renderPositions(positions, orders);
     renderOrders(orders);
+    renderDaytradeExperiment(status.daytrade_today_strategy, status.daytrade_log || []);
 
     var updated = status.updated_at ? new Date(status.updated_at).toLocaleString("bg-BG") : "—";
     setText(document.getElementById("lastUpdated"), "Данни към: " + updated + " (обновява се от бота на всеки час)");
