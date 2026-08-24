@@ -1,79 +1,73 @@
 #!/usr/bin/env python3
 """
-Alpaca Paper Trading Bot — hourly runner, пет независими стратегии.
+Alpaca Paper Trading Bot — hourly runner, ЕКСПЕРИМЕНТ с 3 ротиращи се
+day-trading стратегии.
 
 Изпълнява се от GitHub Actions (безплатен cron, пълен интернет достъп) —
 не от Claude, защото Claude-облачните среди нямат мрежов достъп до Alpaca.
 
-СТРАТЕГИЯ 1 — "blue-chip": SMA(10) > SMA(30) на ликвидни акции/ETF-и.
-                 10% от equity, SL -3% / TP +6%, макс. 3 позиции.
+=================== ЗАЩО СЕ ПРОМЕНИ БОТЪТ ===================
+По-рано ботът въртеше 5 различни стратегии едновременно (blue-chip, penny,
+ai-longterm, ai-daytrade, sp500-longterm). Сега, по изрично желание, ботът
+търгува САМО intraday (day trading) — никога не държи позиция за нощта.
 
-СТРАТЕГИЯ 2 — "penny": 20-дневен breakout + volume spike на penny stocks
-                 (<$5). 3% от equity, SL -10% / TP +20%, макс. 2 позиции.
+Старите 4 дългосрочни/средносрочни стратегии (blue-chip, penny, ai-longterm,
+sp500-longterm) вече НЕ отварят нови позиции. Позициите, които вече бяха
+отворени от тях преди тази промяна, НЕ се пипат — просто си стоят с
+техните оригинални stop-loss/take-profit поръчки (Alpaca ги управлява
+сървърно, независимо от този код) и ще се затворят сами, когато цената
+удари единия праг. Таблото продължава да ги показва с оригиналните им
+означения, докато не се затворят.
 
-СТРАТЕГИЯ 3 — "ai-longterm": дългосрочен тренд (SMA50 > SMA200, "златен
-                 кръст") на watchlist от AI-сектора. BRACKET поръчка:
-                 TP +20% / SL -20% (широк stop, катастрофична защита, не
-                 обичайна търговска граница). 8% от equity, макс. 3 позиции.
-                 (Забележка: без отделен earnings feed — Alpaca не дава
-                 такива данни безплатно, а добавянето на трети API само
-                 за това би усложнило нещата излишно. Сигналът е чисто
-                 базиран на ценови тренд.)
+=================== 3-ДНЕВЕН ЕКСПЕРИМЕНТ ===================
+За да разберем коя day-trading идея работи най-добре, ботът РОТИРА между
+3 различни сигнала — по един активен на ден (детерминирано по датата, не
+по случаен избор, за да е едно и също цял ден дори ботът да се пуска
+многократно):
 
-СТРАТЕГИЯ 4 — "ai-daytrade": SAME AI watchlist, но intraday momentum
-                 (цена > +1.5% спрямо днешния open, с потвърждение по
-                 обем), само в прозореца 16:30–22:30 ч. българско време.
-                 6% от equity, SL -2% / TP +4%, макс. 2 позиции.
-                 ЗАДЪЛЖИТЕЛНО се затваря до края на прозореца (или ако
-                 остават <20 мин. до затварянето на борсата) — никога не
-                 се пренася за следващия ден. Позициите, отворени от тази
-                 стратегия, се разпознават по client_order_id префикс
-                 "ai-daytrade-", за да не се бъркат с "ai-longterm"
-                 позиции в същия символ (двете стратегии споделят
-                 watchlist, но никога не влизат в един и същ символ
-                 едновременно — ако вече е държан от едната, другата го
-                 прескача).
+  🚀 momentum  — купува СИЛА: цена > +1.5% спрямо днешния open + обем
+                 потвърждение. Залага на продължение на движението.
 
-СТРАТЕГИЯ 5 — "sp500-longterm": диверсифицирана кошница от утвърдени
-                 S&P 500 компании (различни сектори — финанси,
-                 здравеопазване, потребление, енергетика, индустрия —
-                 нарочно БЕЗ припокриване с другите watchlist-и), пак на
-                 базата на "златен кръст" (SMA50 > SMA200). Мисълта е за
-                 купи-и-държи за години, не за бърза търговия: BRACKET
-                 поръчка TP +20% / SL -15% (широк stop, само
-                 катастрофична защита). 6% от equity на позиция, макс. 5
-                 едновременни позиции (до 30% от капитала разпределено
-                 между сектори). По-широка диверсификация от
-                 "ai-longterm", защото тук идеята е дългосрочен растеж на
-                 целия пазар, не залог само на един сектор.
+  🔄 reversal  — купува СЛАБОСТ, която спира да пада: цена е поне -1.5%
+                 от open (истинска слабост), но вече не прави нови дъна
+                 (малко над днешния минимум) + обем. Залага на отскок —
+                 обратна теза на momentum.
 
-ВАЖНО за "проучвателния прозорец" (11:00–16:30 бг. време): това е преди
-отварянето на американската борса, така че по това време скриптът и
-без друго не прави нищо активно (пазарът е затворен → изход веднага).
-Сигналите на всички стратегии вече се базират на последната ЗАТВОРЕНА
-дневна свещ, която автоматично включва всичко случило се "през нощта"
-— затова не добавям отделна pre-market "запомняща" фаза с ръчно пазено
-състояние между run-овете (би изисквало ботът сам да прави git commit
-обратно в repo-то — по-крехко и по-трудно за поддръжка, без реална
-полза, защото free data feed-ът (IEX) и без друго няма надеждни
-pre-market данни).
+  📈 breakout  — купува ПРОБИВ: цената е на/близо до дневния максимум,
+                 при условие че самият връх вече е забележимо над open
+                 (не е плосък ден) + обем. Залага на продължение след
+                 пробив на съпротива.
 
-Всяка позиция се пуска като BRACKET (SL+TP) или OTO (само SL) поръчка —
-Alpaca управлява изходите СЪРВЪРНО, денонощно, дори ботът да не се е
-пуснал в конкретния час.
+Умишлено ВСИЧКИ параметри за риск (позиция %, stop-loss, take-profit,
+брой позиции, прозорец) са ЕДНАКВИ за трите — единствената разлика е
+СИГНАЛЪТ за вход. Това прави сравнението честно: ако една стратегия
+изкара по-добър резултат, причината е сигналът, не различен риск профил.
+
+Всеки ден ботът записва резултата (реализирана печалба/загуба от
+затворените тази стратегия позиции) в docs/status.json → "daytrade_log",
+което се пази между run-овете (файлът се чете и допълва, не се
+презаписва от нулата всеки път) — така след 3+ дни има реална статистика
+за сравнение, видима директно на таблото.
+
+Прозорец: 16:30–22:30 ч. българско време. ЗАДЪЛЖИТЕЛНО се затваря всичко
+до края на прозореца (или ако остават <20 мин. до затварянето на
+борсата) — никога не се пренася за следващия ден. Позициите се
+разпознават по client_order_id префикс "daytrade-{стратегия}-".
 
 СТАТИЧНО ТАБЛО (docs/index.html, публикувано през GitHub Pages): при
-всеки run скриптът записва docs/status.json (equity, позиции, поръчки) —
-GitHub Actions го commit-ва обратно в repo-то (виж trading-bot.yml,
-стъпка "Commit updated status snapshot"). Таблото чете този файл директно
-от същия сайт — БЕЗ API ключове в браузъра и БЕЗ проблем с CORS (Alpaca
-блокира директни browser заявки към paper-api.alpaca.markets).
+всеки run скриптът записва docs/status.json (equity, позиции, поръчки,
+активна стратегия днес, дневник от резултати) — GitHub Actions го
+commit-ва обратно в repo-то (виж trading-bot.yml, стъпка "Commit updated
+status snapshot"). Таблото чете този файл директно от същия сайт — БЕЗ
+API ключове в браузъра и БЕЗ проблем с CORS (Alpaca блокира директни
+browser заявки към paper-api.alpaca.markets).
 
 ПАРОЛА / КРИПТИРАНЕ: ако DASHBOARD_PASSWORD е зададена, status.json се
 записва криптиран (AES-256-GCM) — нечетим за никого без паролата, дори
 ако отвори суровия файл директно на GitHub. Таблото пита за парола и
 декриптира в браузъра (Web Crypto API), без паролата да напуска
-компютъра на потребителя.
+компютъра на потребителя. Ботът и декриптира предишния файл (за да
+продължи "daytrade_log" историята между run-овете), и криптира новия.
 
 Изисква следните environment variables (GitHub Actions secrets):
   ALPACA_API_KEY_ID
@@ -121,74 +115,35 @@ SOFIA_TZ = ZoneInfo("Europe/Sofia")
 # няма проблем с CORS (Alpaca блокира директни заявки от браузър).
 STATUS_PATH = "docs/status.json"
 
-# ==================== СТРАТЕГИЯ 1: blue-chip ====================
-WATCHLIST = ["SPY", "QQQ", "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA"]
-MAX_POSITIONS = 3
-POSITION_PCT = 0.10
-STOP_LOSS_PCT = 0.03
-TAKE_PROFIT_PCT = 0.06
-SMA_SHORT = 10
-SMA_LONG = 30
-
-# ==================== СТРАТЕГИЯ 2: penny stocks ====================
-PENNY_WATCHLIST = [
-    "HTZ", "PLUG", "UWMC", "OPEN", "NIO", "AMC",
-    "BTBT", "HIVE", "SPCE", "LAC", "EOSE", "BBAI",
-]
-PENNY_MIN_PRICE = 0.50
-PENNY_MAX_PRICE = 5.00
-PENNY_MIN_AVG_DOLLAR_VOLUME = 2_000_000
-PENNY_MAX_POSITIONS = 2
-PENNY_POSITION_PCT = 0.03
-PENNY_STOP_LOSS_PCT = 0.10
-PENNY_TAKE_PROFIT_PCT = 0.20
-PENNY_BREAKOUT_LOOKBACK = 20
-PENNY_VOLUME_MULT = 1.5
-
-# ==================== СТРАТЕГИЯ 3 и 4: AI сектор ====================
-# Watchlist проверен август 2026 г. (реални, борсово листнати тикери,
-# отделни от blue-chip и penny списъците по-горе).
-AI_WATCHLIST = ["PLTR", "AMD", "AVGO", "SMCI", "CRWD", "SNOW", "ARM", "MRVL", "ANET", "MU", "ORCL"]
-
-# -- 3a: ai-longterm --
-AI_LT_SMA_FAST = 50
-AI_LT_SMA_SLOW = 200
-AI_LT_BARS_LIMIT = 220
-AI_LT_MAX_POSITIONS = 3
-AI_LT_POSITION_PCT = 0.08
-AI_LT_STOP_LOSS_PCT = 0.20   # катастрофична защита, не обичаен trading stop
-AI_LT_TAKE_PROFIT_PCT = 0.20  # взима печалбата на +20% вместо да чака безкрайно
-
-# -- 3b: ai-daytrade --
-AI_DT_MAX_POSITIONS = 2
-AI_DT_POSITION_PCT = 0.06
-AI_DT_STOP_LOSS_PCT = 0.02
-AI_DT_TAKE_PROFIT_PCT = 0.04
-AI_DT_MOMENTUM_THRESHOLD = 0.015     # +1.5% спрямо днешния open
-AI_DT_MIN_DOLLAR_VOLUME = 10_000_000  # оборот в $ до момента днес
-AI_DT_WINDOW_START_MIN = 16 * 60 + 30   # 16:30 бг. време
-AI_DT_WINDOW_END_MIN = 22 * 60 + 30     # 22:30 бг. време
-AI_DT_FORCE_CLOSE_BUFFER_MIN = 20       # затваря се 20 мин. преди края
-
-# ==================== СТРАТЕГИЯ 5: sp500-longterm ====================
-# Диверсифицирана кошница от S&P 500 компании, различни сектори,
-# нарочно БЕЗ припокриване с WATCHLIST / PENNY_WATCHLIST / AI_WATCHLIST.
-SP500_WATCHLIST = [
-    "JPM", "JNJ", "PG", "KO", "XOM", "CVX", "HD", "WMT",
-    "UNH", "V", "MA", "DIS", "PEP", "COST", "MCD", "LLY",
-]
-SP500_LT_SMA_FAST = 50
-SP500_LT_SMA_SLOW = 200
-SP500_LT_BARS_LIMIT = 220
-SP500_LT_MAX_POSITIONS = 5
-SP500_LT_POSITION_PCT = 0.06
-SP500_LT_STOP_LOSS_PCT = 0.15   # катастрофична защита, не обичаен trading stop
-SP500_LT_TAKE_PROFIT_PCT = 0.20  # взима печалбата на +20% вместо да чака безкрайно
-
 # ==================== Начален баланс (за "P/L общо от старта") ====================
 # Alpaca paper trading акаунтите тръгват по подразбиране с $100,000.
 # Ако си нулирал/презаредил акаунта с друга сума, смени числото тук.
 STARTING_BALANCE = 100_000.0
+
+# ==================== Day trading watchlist (споделен от трите стратегии) ====================
+# Ликвидни, достатъчно волатилни имена — блу-чипове/ETF-и + AI/tech сектор.
+DAYTRADE_WATCHLIST = [
+    "SPY", "QQQ", "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA",
+    "PLTR", "AMD", "AVGO", "SMCI", "CRWD", "SNOW", "ARM", "MRVL", "ANET", "MU", "ORCL",
+]
+
+# ==================== Общи риск параметри (ЕДНАКВИ за трите — честно сравнение) ====================
+DT_MAX_POSITIONS = 2
+DT_POSITION_PCT = 0.06
+DT_STOP_LOSS_PCT = 0.02
+DT_TAKE_PROFIT_PCT = 0.04
+DT_MIN_DOLLAR_VOLUME = 10_000_000       # оборот в $ до момента днес
+DT_WINDOW_START_MIN = 16 * 60 + 30      # 16:30 бг. време
+DT_WINDOW_END_MIN = 22 * 60 + 30        # 22:30 бг. време
+DT_FORCE_CLOSE_BUFFER_MIN = 20          # затваря се 20 мин. преди края
+
+# ==================== Параметри на сигналите ====================
+DT_MOMENTUM_THRESHOLD = 0.015   # ±1.5% спрямо днешния open (ползва се от momentum И reversal)
+DT_REVERSAL_CUSHION = 0.003     # цената трябва да е поне 0.3% над дневния минимум (не "прясно" дъно)
+DT_BREAKOUT_MIN_RANGE = 0.005   # дневният връх трябва да е поне +0.5% над open (не е плосък ден)
+DT_BREAKOUT_MARGIN = 0.002      # цената трябва да е до 0.2% от дневния връх, за да се брои "на върха"
+
+DAYTRADE_LOG_MAX_ENTRIES = 90   # пазим последните ~3 месеца дневни резултати
 
 
 # ---------------- ntfy.sh известия ----------------
@@ -270,17 +225,6 @@ def close_position_market(symbol):
     return _delete(f"{TRADING_BASE}/v2/positions/{symbol}")
 
 
-def get_daily_bars(symbol, limit=40):
-    end = datetime.now(timezone.utc)
-    start = end - timedelta(days=limit * 2)  # буфер за уикенди/празници
-    url = (
-        f"{DATA_BASE}/v2/stocks/{symbol}/bars"
-        f"?timeframe=1Day&start={start.strftime('%Y-%m-%d')}"
-        f"&end={end.strftime('%Y-%m-%d')}&limit={limit}&feed=iex"
-    )
-    return _get(url).get("bars", [])
-
-
 def get_snapshot(symbol):
     return _get(f"{DATA_BASE}/v2/stocks/{symbol}/snapshot?feed=iex")
 
@@ -300,36 +244,26 @@ def parse_alpaca_ts(ts):
     return datetime.fromisoformat(ts)
 
 
-def sma(values, n):
-    if len(values) < n:
-        return None
-    return sum(values[-n:]) / n
-
-
 def place_entry_order(symbol, qty, entry_price, stop_loss_pct, take_profit_pct, client_order_id=None):
-    """BRACKET (SL+TP), или OTO (само SL) ако take_profit_pct е None."""
+    """BRACKET (SL+TP) поръчка."""
     stop_loss = round(entry_price * (1 - stop_loss_pct), 2)
+    take_profit = round(entry_price * (1 + take_profit_pct), 2)
     payload = {
         "symbol": symbol,
         "qty": str(qty),
         "side": "buy",
         "type": "market",
         "time_in_force": "day",
+        "order_class": "bracket",
+        "take_profit": {"limit_price": str(take_profit)},
+        "stop_loss": {"stop_price": str(stop_loss)},
     }
-    if take_profit_pct is not None:
-        take_profit = round(entry_price * (1 + take_profit_pct), 2)
-        payload["order_class"] = "bracket"
-        payload["take_profit"] = {"limit_price": str(take_profit)}
-        payload["stop_loss"] = {"stop_price": str(stop_loss)}
-    else:
-        payload["order_class"] = "oto"
-        payload["stop_loss"] = {"stop_price": str(stop_loss)}
     if client_order_id:
         payload["client_order_id"] = client_order_id[:128]
     return _post(f"{TRADING_BASE}/v2/orders", payload)
 
 
-# ---------------- Status snapshot (за статичното табло) ----------------
+# ---------------- Криптиране/декриптиране (за status.json) ----------------
 
 def _safe_float(v):
     try:
@@ -350,7 +284,58 @@ def _encrypt_json(obj, password):
     return base64.b64encode(nonce + ciphertext).decode("ascii")
 
 
-def write_status_snapshot(clock, account, positions, orders):
+def _decrypt_json(enc_b64, password):
+    """Обратното на _encrypt_json — ползва се, за да прочетем "daytrade_log"
+    от ПРЕДИШНИЯ status.json (криптиран) и да продължим историята му."""
+    raw = base64.b64decode(enc_b64)
+    nonce, ciphertext = raw[:12], raw[12:]
+    key = hashlib.sha256(password.encode("utf-8")).digest()
+    aesgcm = AESGCM(key)
+    plaintext = aesgcm.decrypt(nonce, ciphertext, None)
+    return json.loads(plaintext.decode("utf-8"))
+
+
+# ---------------- Дневник на 3-дневния експеримент ----------------
+
+def load_previous_daytrade_log():
+    """Чете (и декриптира, ако трябва) ПРЕДИШНИЯ status.json, само за да
+    извади daytrade_log масива — за да продължи историята между run-овете
+    (иначе всеки run презаписва файла от нулата и губим миналите дни)."""
+    try:
+        with open(STATUS_PATH, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+    except Exception:
+        return []
+    try:
+        if isinstance(raw, dict) and "enc" in raw:
+            if not DASHBOARD_PASSWORD:
+                return []
+            raw = _decrypt_json(raw["enc"], DASHBOARD_PASSWORD)
+        return raw.get("daytrade_log", []) if isinstance(raw, dict) else []
+    except Exception as e:
+        print(f"[daytrade_log] Неуспешно четене на предишен log: {e}")
+        return []
+
+
+def upsert_daytrade_log(log, date_str, strategy_key, strategy_label, realized_pl, trades_closed):
+    """Добавя/обновява записа за дадена дата (ако вече има запис за същия
+    ден — презаписва го, вместо да дублира)."""
+    entry = {
+        "date": date_str,
+        "strategy": strategy_key,
+        "strategy_label": strategy_label,
+        "realized_pl": round(realized_pl, 2),
+        "trades_closed": trades_closed,
+    }
+    log = [e for e in log if e.get("date") != date_str]
+    log.append(entry)
+    log.sort(key=lambda e: e.get("date", ""))
+    return log[-DAYTRADE_LOG_MAX_ENTRIES:]
+
+
+# ---------------- Status snapshot (за статичното табло) ----------------
+
+def write_status_snapshot(clock, account, positions, orders, daytrade_log=None, today_strategy=None):
     """Записва компактна JSON снимка в STATUS_PATH — commit-ва се обратно в
     repo-то от workflow-а, за да може docs/index.html (GitHub Pages) да я
     прочете директно, без API ключове и без CORS проблем."""
@@ -375,6 +360,8 @@ def write_status_snapshot(clock, account, positions, orders):
             "market_open": bool(clock.get("is_open")),
             "next_open": clock.get("next_open"),
             "next_close": clock.get("next_close"),
+            "daytrade_today_strategy": today_strategy,
+            "daytrade_log": daytrade_log or [],
             "account": {
                 "equity": account.get("equity"),
                 "cash": account.get("cash"),
@@ -429,197 +416,149 @@ def write_status_snapshot(clock, account, positions, orders):
         print(f"[status] Неуспешен запис на snapshot: {e}")
 
 
-# ---------------- Сигнали ----------------
+# ---------------- Трите day-trading сигнала ----------------
 
-def blue_chip_signal(bars):
-    closes = [b["c"] for b in bars]
-    short = sma(closes, SMA_SHORT)
-    long_ = sma(closes, SMA_LONG)
-    return short is not None and long_ is not None and short > long_
-
-
-def penny_signal(bars):
-    if len(bars) < PENNY_BREAKOUT_LOOKBACK + 1:
-        return False
-    closes = [b["c"] for b in bars]
-    volumes = [b["v"] for b in bars]
-    last_close = closes[-1]
-    if last_close < PENNY_MIN_PRICE or last_close > PENNY_MAX_PRICE:
-        return False
-    prior_closes = closes[-(PENNY_BREAKOUT_LOOKBACK + 1):-1]
-    prior_volumes = volumes[-(PENNY_BREAKOUT_LOOKBACK + 1):-1]
-    prior_high = max(prior_closes)
-    avg_volume = sum(prior_volumes) / len(prior_volumes)
-    avg_price = sum(prior_closes) / len(prior_closes)
-    if avg_volume * avg_price < PENNY_MIN_AVG_DOLLAR_VOLUME:
-        return False
-    today_volume = volumes[-1]
-    breakout = last_close > prior_high
-    volume_spike = avg_volume > 0 and today_volume > avg_volume * PENNY_VOLUME_MULT
-    return breakout and volume_spike
-
-
-def golden_cross_signal(bars, sma_fast=AI_LT_SMA_FAST, sma_slow=AI_LT_SMA_SLOW):
-    """SMA(fast) > SMA(slow) ('златен кръст') и цената над SMA(fast) —
-    потвърден дългосрочен тренд. Използва се и от "ai-longterm", и от
-    "sp500-longterm" (по подразбиране 50/200, еднакво за двете)."""
-    closes = [b["c"] for b in bars]
-    fast = sma(closes, sma_fast)
-    slow = sma(closes, sma_slow)
-    if fast is None or slow is None:
-        return False
-    return fast > slow and closes[-1] > fast
-
-
-def ai_daytrade_signal(snapshot):
+def momentum_signal(snapshot):
+    """🚀 Купува СИЛА: цена > +1.5% спрямо днешния open, с обем-потвърждение.
+    Залага на продължение на движението (следва тренда)."""
     try:
-        current_price = snapshot["latestTrade"]["p"]
+        price = snapshot["latestTrade"]["p"]
         today_open = snapshot["dailyBar"]["o"]
         today_volume = snapshot["dailyBar"]["v"]
     except (KeyError, TypeError):
         return False
-    if not today_open or not current_price:
+    if not today_open or not price:
         return False
-    momentum = (current_price - today_open) / today_open
-    dollar_volume_so_far = today_volume * current_price
-    return momentum > AI_DT_MOMENTUM_THRESHOLD and dollar_volume_so_far > AI_DT_MIN_DOLLAR_VOLUME
+    momentum = (price - today_open) / today_open
+    dollar_volume = today_volume * price
+    return momentum > DT_MOMENTUM_THRESHOLD and dollar_volume > DT_MIN_DOLLAR_VOLUME
 
 
-# ---------------- Стратегии (bar-based: blue-chip / penny / ai-longterm) ----------------
+def reversal_signal(snapshot):
+    """🔄 Купува СЛАБОСТ, която спира да пада: цената е поне -1.5% от open
+    (истинска слабост), но вече не прави нови дъна (малко над днешния
+    минимум) + обем. Залага на отскок — обратна теза на momentum."""
+    try:
+        price = snapshot["latestTrade"]["p"]
+        today_open = snapshot["dailyBar"]["o"]
+        today_low = snapshot["dailyBar"]["l"]
+        today_volume = snapshot["dailyBar"]["v"]
+    except (KeyError, TypeError):
+        return False
+    if not today_open or not price or not today_low:
+        return False
+    drop_from_open = (price - today_open) / today_open
+    cushion_above_low = (price - today_low) / today_low
+    dollar_volume = today_volume * price
+    return (
+        drop_from_open < -DT_MOMENTUM_THRESHOLD
+        and cushion_above_low > DT_REVERSAL_CUSHION
+        and dollar_volume > DT_MIN_DOLLAR_VOLUME
+    )
 
-STRATEGIES = [
-    {
-        "label": "blue-chip", "watchlist": WATCHLIST, "max_positions": MAX_POSITIONS,
-        "position_pct": POSITION_PCT, "stop_loss_pct": STOP_LOSS_PCT,
-        "take_profit_pct": TAKE_PROFIT_PCT, "signal_fn": blue_chip_signal, "bars_limit": 40,
-    },
-    {
-        "label": "penny", "watchlist": PENNY_WATCHLIST, "max_positions": PENNY_MAX_POSITIONS,
-        "position_pct": PENNY_POSITION_PCT, "stop_loss_pct": PENNY_STOP_LOSS_PCT,
-        "take_profit_pct": PENNY_TAKE_PROFIT_PCT, "signal_fn": penny_signal, "bars_limit": 40,
-    },
-    {
-        "label": "ai-longterm", "watchlist": AI_WATCHLIST, "max_positions": AI_LT_MAX_POSITIONS,
-        "position_pct": AI_LT_POSITION_PCT, "stop_loss_pct": AI_LT_STOP_LOSS_PCT,
-        "take_profit_pct": AI_LT_TAKE_PROFIT_PCT, "signal_fn": golden_cross_signal, "bars_limit": AI_LT_BARS_LIMIT,
-    },
-    {
-        "label": "sp500-longterm", "watchlist": SP500_WATCHLIST, "max_positions": SP500_LT_MAX_POSITIONS,
-        "position_pct": SP500_LT_POSITION_PCT, "stop_loss_pct": SP500_LT_STOP_LOSS_PCT,
-        "take_profit_pct": SP500_LT_TAKE_PROFIT_PCT, "signal_fn": golden_cross_signal, "bars_limit": SP500_LT_BARS_LIMIT,
-    },
+
+def breakout_signal(snapshot):
+    """📈 Купува ПРОБИВ: цената е на/близо до дневния максимум, при
+    условие че самият връх вече е забележимо над open (не е плосък ден)
+    + обем. Залага на продължение след пробив на съпротива."""
+    try:
+        price = snapshot["latestTrade"]["p"]
+        today_open = snapshot["dailyBar"]["o"]
+        today_high = snapshot["dailyBar"]["h"]
+        today_volume = snapshot["dailyBar"]["v"]
+    except (KeyError, TypeError):
+        return False
+    if not today_open or not price or not today_high:
+        return False
+    high_move = (today_high - today_open) / today_open
+    near_high = price >= today_high * (1 - DT_BREAKOUT_MARGIN)
+    dollar_volume = today_volume * price
+    return high_move > DT_BREAKOUT_MIN_RANGE and near_high and dollar_volume > DT_MIN_DOLLAR_VOLUME
+
+
+DAYTRADE_STRATEGIES = [
+    {"key": "momentum", "label": "Моментум 🚀", "signal_fn": momentum_signal},
+    {"key": "reversal", "label": "Отскок 🔄", "signal_fn": reversal_signal},
+    {"key": "breakout", "label": "Пробив 📈", "signal_fn": breakout_signal},
 ]
 
 
-def run_strategy(strategy, equity, held_symbols, traded_today, today_str):
-    watchlist = strategy["watchlist"]
-    held_in_strategy = held_symbols & set(watchlist)
-    slots_free = strategy["max_positions"] - len(held_in_strategy)
-    trades_made, errors = [], []
-    if slots_free <= 0:
-        return trades_made, errors
-
-    for symbol in watchlist:
-        if len(trades_made) >= slots_free:
-            break
-        if symbol in held_symbols or symbol in traded_today:
-            continue
-        try:
-            bars = get_daily_bars(symbol, limit=strategy.get("bars_limit", 40))
-        except error.HTTPError as e:
-            errors.append(f"[{strategy['label']}] {symbol}: грешка при данни ({e.read().decode()[:200]})")
-            continue
-        if not bars or not strategy["signal_fn"](bars):
-            continue
-
-        last_price = bars[-1]["c"]
-        budget = equity * strategy["position_pct"]
-        qty = int(budget // last_price)
-        if qty < 1:
-            continue
-        coid = f"{strategy['label']}-{symbol}-{today_str}"
-        try:
-            place_entry_order(
-                symbol, qty, last_price, strategy["stop_loss_pct"], strategy["take_profit_pct"],
-                client_order_id=coid,
-            )
-            trades_made.append((strategy["label"], symbol, qty, last_price,
-                                 strategy["stop_loss_pct"], strategy["take_profit_pct"]))
-            tp = strategy["take_profit_pct"]
-            tp_str = f"+{tp*100:.0f}%" if tp is not None else "без TP (виси до SL)"
-            print(
-                f"[{strategy['label']}] КУПЕНО: {qty} x {symbol} @ ~{last_price:.2f} "
-                f"(SL -{strategy['stop_loss_pct']*100:.0f}% / TP {tp_str})"
-            )
-        except error.HTTPError as e:
-            errors.append(f"[{strategy['label']}] {symbol}: грешка при поръчка ({e.read().decode()[:200]})")
-
-    return trades_made, errors
+def todays_strategy(sofia_now):
+    """Детерминирана ротация по календарна дата (не по случаен избор) —
+    така активната стратегия е една и съща цял ден, дори ботът да се
+    пуска многократно."""
+    idx = sofia_now.toordinal() % len(DAYTRADE_STRATEGIES)
+    return DAYTRADE_STRATEGIES[idx]
 
 
-# ---------------- ai-daytrade: вход и принудително затваряне ----------------
+# ---------------- Day trading: вход и принудително затваряне ----------------
 
-def count_open_ai_daytrade_positions(held_symbols):
+def count_open_daytrade_positions(held_symbols):
     count = 0
-    for symbol in held_symbols & set(AI_WATCHLIST):
+    for symbol in held_symbols & set(DAYTRADE_WATCHLIST):
         try:
             orders = get_orders_for_symbol_today(symbol)
         except error.HTTPError:
             continue
-        if any(o.get("client_order_id", "").startswith("ai-daytrade-") and o.get("status") == "filled" for o in orders):
+        if any(o.get("client_order_id", "").startswith("daytrade-") and o.get("status") == "filled" for o in orders):
             count += 1
     return count
 
 
-def run_ai_daytrade_entries(equity, held_symbols, traded_today, today_str):
+def run_daytrade_entries(strategy, equity, held_symbols, traded_today, today_str):
     trades_made, errors = [], []
-    dt_open_count = count_open_ai_daytrade_positions(held_symbols)
-    slots_free = AI_DT_MAX_POSITIONS - dt_open_count
+    dt_open_count = count_open_daytrade_positions(held_symbols)
+    slots_free = DT_MAX_POSITIONS - dt_open_count
     if slots_free <= 0:
         return trades_made, errors
 
-    for symbol in AI_WATCHLIST:
+    for symbol in DAYTRADE_WATCHLIST:
         if len(trades_made) >= slots_free:
             break
         if symbol in held_symbols or symbol in traded_today:
-            continue  # вече държан (от ai-longterm или другаде) - прескачаме, за да не се смесят
+            continue  # вече държан (от стар/легаси позиция или другаде) — прескачаме
         try:
             snap = get_snapshot(symbol)
         except error.HTTPError as e:
-            errors.append(f"[ai-daytrade] {symbol}: грешка при snapshot ({e.read().decode()[:150]})")
+            errors.append(f"[{strategy['key']}] {symbol}: грешка при snapshot ({e.read().decode()[:150]})")
             continue
-        if not ai_daytrade_signal(snap):
+        if not strategy["signal_fn"](snap):
             continue
         current_price = snap["latestTrade"]["p"]
-        budget = equity * AI_DT_POSITION_PCT
+        budget = equity * DT_POSITION_PCT
         qty = int(budget // current_price)
         if qty < 1:
             continue
-        coid = f"ai-daytrade-{symbol}-{today_str}"
+        coid = f"daytrade-{strategy['key']}-{symbol}-{today_str}"
         try:
-            place_entry_order(symbol, qty, current_price, AI_DT_STOP_LOSS_PCT, AI_DT_TAKE_PROFIT_PCT, client_order_id=coid)
-            trades_made.append(("ai-daytrade", symbol, qty, current_price, AI_DT_STOP_LOSS_PCT, AI_DT_TAKE_PROFIT_PCT))
+            place_entry_order(symbol, qty, current_price, DT_STOP_LOSS_PCT, DT_TAKE_PROFIT_PCT, client_order_id=coid)
+            trades_made.append((strategy["label"], symbol, qty, current_price, DT_STOP_LOSS_PCT, DT_TAKE_PROFIT_PCT))
             print(
-                f"[ai-daytrade] КУПЕНО: {qty} x {symbol} @ ~{current_price:.2f} "
-                f"(SL -{AI_DT_STOP_LOSS_PCT*100:.0f}% / TP +{AI_DT_TAKE_PROFIT_PCT*100:.0f}%) "
+                f"[{strategy['label']}] КУПЕНО: {qty} x {symbol} @ ~{current_price:.2f} "
+                f"(SL -{DT_STOP_LOSS_PCT*100:.0f}% / TP +{DT_TAKE_PROFIT_PCT*100:.0f}%) "
                 f"— ще се затвори до края на прозореца"
             )
         except error.HTTPError as e:
-            errors.append(f"[ai-daytrade] {symbol}: грешка при поръчка ({e.read().decode()[:150]})")
+            errors.append(f"[{strategy['key']}] {symbol}: грешка при поръчка ({e.read().decode()[:150]})")
 
     return trades_made, errors
 
 
-def force_close_ai_daytrade_positions(held_symbols):
+def force_close_daytrade_positions(held_symbols, positions_by_symbol):
+    """Затваря всички отворени днешни day-trade позиции и връща и
+    приблизителна реализирана П/З (взета от unrealized_pl точно преди
+    затварянето — market поръчките изпълняват много близо до тази цена,
+    достатъчно точно за сравнение между стратегиите)."""
     closed, errors = [], []
-    for symbol in held_symbols & set(AI_WATCHLIST):
+    realized_pl_total = 0.0
+    for symbol in held_symbols & set(DAYTRADE_WATCHLIST):
         try:
             orders = get_orders_for_symbol_today(symbol)
         except error.HTTPError as e:
-            errors.append(f"[ai-daytrade] {symbol}: грешка при проверка ({e.read().decode()[:150]})")
+            errors.append(f"[daytrade] {symbol}: грешка при проверка ({e.read().decode()[:150]})")
             continue
         is_daytrade = any(
-            o.get("client_order_id", "").startswith("ai-daytrade-") and o.get("status") == "filled"
+            o.get("client_order_id", "").startswith("daytrade-") and o.get("status") == "filled"
             for o in orders
         )
         if not is_daytrade:
@@ -630,12 +569,14 @@ def force_close_ai_daytrade_positions(held_symbols):
                     cancel_order(o["id"])
                 except error.HTTPError:
                     pass  # може вече да е отменена от OCO-своя близнак — ОК
+            pos = positions_by_symbol.get(symbol) or {}
+            realized_pl_total += _safe_float(pos.get("unrealized_pl")) or 0.0
             close_position_market(symbol)
             closed.append(symbol)
-            print(f"[ai-daytrade] ЗАТВОРЕНО {symbol} (край на дневния прозорец / borsa)")
+            print(f"[daytrade] ЗАТВОРЕНО {symbol} (край на дневния прозорец)")
         except error.HTTPError as e:
-            errors.append(f"[ai-daytrade] {symbol}: грешка при затваряне ({e.read().decode()[:150]})")
-    return closed, errors
+            errors.append(f"[daytrade] {symbol}: грешка при затваряне ({e.read().decode()[:150]})")
+    return closed, realized_pl_total, errors
 
 
 # ---------------- Main ----------------
@@ -648,75 +589,80 @@ def run():
     account = get_account()
     positions = get_positions()
     today_orders = get_today_orders()
-    write_status_snapshot(clock, account, positions, today_orders)
+    daytrade_log = load_previous_daytrade_log()
+
+    now = parse_alpaca_ts(clock["timestamp"])
+    sofia_now = now.astimezone(SOFIA_TZ)
+    active_strategy = todays_strategy(sofia_now)
+    active_strategy_info = {"key": active_strategy["key"], "label": active_strategy["label"]}
+
+    write_status_snapshot(
+        clock, account, positions, today_orders,
+        daytrade_log=daytrade_log, today_strategy=active_strategy_info,
+    )
 
     if not clock.get("is_open"):
         print(f"Пазарът е затворен (next open: {clock.get('next_open')}). Нищо за правене.")
         return
 
-    now = parse_alpaca_ts(clock["timestamp"])
     next_close = parse_alpaca_ts(clock["next_close"])
     minutes_to_close = (next_close - now).total_seconds() / 60.0
 
-    sofia_now = now.astimezone(SOFIA_TZ)
     sofia_minutes = sofia_now.hour * 60 + sofia_now.minute
-    in_daytrade_window = AI_DT_WINDOW_START_MIN <= sofia_minutes <= AI_DT_WINDOW_END_MIN
-    near_window_end = sofia_minutes >= (AI_DT_WINDOW_END_MIN - AI_DT_FORCE_CLOSE_BUFFER_MIN)
-    near_market_close = minutes_to_close <= AI_DT_FORCE_CLOSE_BUFFER_MIN
+    in_window = DT_WINDOW_START_MIN <= sofia_minutes <= DT_WINDOW_END_MIN
+    near_window_end = sofia_minutes >= (DT_WINDOW_END_MIN - DT_FORCE_CLOSE_BUFFER_MIN)
+    near_market_close = minutes_to_close <= DT_FORCE_CLOSE_BUFFER_MIN
     should_force_close = near_window_end or near_market_close
 
     today_str = now.strftime("%Y-%m-%d")
-
     equity = float(account["equity"])
     held_symbols = {p["symbol"] for p in positions}
+    positions_by_symbol = {p["symbol"]: p for p in positions}
     traded_today = {o["symbol"] for o in today_orders}
 
     print(
-        f"Equity: {equity:.2f} | Позиции: {len(positions)} | "
-        f"Sofia {sofia_now.strftime('%H:%M')} | daytrade window: {in_daytrade_window} | "
-        f"force-close: {should_force_close}"
+        f"Equity: {equity:.2f} | Позиции: {len(positions)} | Sofia {sofia_now.strftime('%H:%M')} | "
+        f"стратегия днес: {active_strategy['label']} | window: {in_window} | force-close: {should_force_close}"
     )
 
     all_trades, all_errors = [], []
 
-    # 1) Задължително първо: затваряме просрочени ai-daytrade позиции.
+    # 1) Задължително първо: затваряме просрочени day-trade позиции от днес.
     if should_force_close:
-        closed, errs = force_close_ai_daytrade_positions(held_symbols)
+        closed, realized_pl, errs = force_close_daytrade_positions(held_symbols, positions_by_symbol)
         for s in closed:
-            all_trades.append(("ai-daytrade-CLOSE", s, None, None, None, None))
+            all_trades.append(("daytrade-CLOSE", s, None, None, None, None))
         all_errors.extend(errs)
         held_symbols -= set(closed)
+        daytrade_log = upsert_daytrade_log(
+            daytrade_log, today_str, active_strategy["key"], active_strategy["label"],
+            realized_pl, len(closed),
+        )
 
-    # 2) Bar-based стратегии: blue-chip, penny, ai-longterm.
-    for strategy in STRATEGIES:
-        trades, errors = run_strategy(strategy, equity, held_symbols, traded_today, today_str)
+    # 2) Нови входове по активната днешна стратегия — само в прозореца.
+    if in_window and not should_force_close:
+        trades, errors = run_daytrade_entries(active_strategy, equity, held_symbols, traded_today, today_str)
         all_trades.extend(trades)
         all_errors.extend(errors)
         held_symbols |= {t[1] for t in trades}
 
-    # 3) ai-daytrade нови входове — само в прозореца и не точно преди затваряне.
-    if in_daytrade_window and not should_force_close:
-        trades, errors = run_ai_daytrade_entries(equity, held_symbols, traded_today, today_str)
-        all_trades.extend(trades)
-        all_errors.extend(errors)
-        held_symbols |= {t[1] for t in trades}
-
-    # Финална снимка — след като сделките (ако е имало) вече са изпълнени,
-    # за да показва таблото актуалното състояние, не това отпреди тях.
-    if all_trades:
+    # Финална снимка — след сделките/затварянията и с обновения дневник.
+    if all_trades or should_force_close:
         try:
-            write_status_snapshot(clock, get_account(), get_positions(), get_today_orders())
+            write_status_snapshot(
+                clock, get_account(), get_positions(), get_today_orders(),
+                daytrade_log=daytrade_log, today_strategy=active_strategy_info,
+            )
         except error.HTTPError as e:
             print(f"[status] Неуспешно финално обновяване: {e}")
 
     if all_trades:
-        lines = [f"🤖 Alpaca бот — {len(all_trades)} събитие(я):"]
+        lines = [f"🤖 Alpaca бот — {len(all_trades)} събитие(я) [{active_strategy['label']}]:"]
         for label, symbol, qty, price, sl, tp in all_trades:
-            if label == "ai-daytrade-CLOSE":
-                lines.append(f"  • [ai-daytrade] ЗАТВОРЕНО {symbol} (край на дневния прозорец)")
+            if label == "daytrade-CLOSE":
+                lines.append(f"  • ЗАТВОРЕНО {symbol} (край на дневния прозорец)")
             else:
-                tp_str = f"+{tp*100:.0f}%" if tp is not None else "без TP"
-                lines.append(f"  • [{label}] КУПЕНО {qty} x {symbol} @ ~{price:.2f} (SL -{sl*100:.0f}% / TP {tp_str})")
+                lines.append(f"  • [{label}] КУПЕНО {qty} x {symbol} @ ~{price:.2f} (SL -{sl*100:.0f}% / TP +{tp*100:.0f}%)")
         lines.append(f"Equity: ${equity:,.2f}")
         send_notification("\n".join(lines))
     if all_errors:
