@@ -49,6 +49,16 @@ sp500-longterm) вече НЕ отварят нови позиции. Позиц
 презаписва от нулата всеки път) — така след 3+ дни има реална статистика
 за сравнение, видима директно на таблото.
 
+За всеки ден в "daytrade_log" се пази и списък "trades" с реалните
+покупки/продажби (символ, кол-во, цена, П/З) — таблото го показва в
+календар (по 1 клетка на ден, оцветена според резултата), а с клик на
+конкретен ден се вижда точно какво е купил/продал ботът тогава. Тези
+сделки НЕ се вземат от моментна снимка при затварянето, а се
+възстановяват от реалната поръчкова история в Alpaca (виж
+build_daytrade_trades) — това хваща коректно и случаите, в които
+Stop-loss/Take-profit се е задействал сам по средата на деня, преди
+принудителното затваряне в края на прозореца.
+
 Прозорец: 16:30–22:30 ч. българско време. ЗАДЪЛЖИТЕЛНО се затваря всичко
 до края на прозореца (или ако остават <20 мин. до затварянето на
 борсата) — никога не се пренася за следващия ден. Позициите се
@@ -143,7 +153,7 @@ DT_REVERSAL_CUSHION = 0.003     # цената трябва да е поне 0.3
 DT_BREAKOUT_MIN_RANGE = 0.005   # дневният връх трябва да е поне +0.5% над open (не е плосък ден)
 DT_BREAKOUT_MARGIN = 0.002      # цената трябва да е до 0.2% от дневния връх, за да се брои "на върха"
 
-DAYTRADE_LOG_MAX_ENTRIES = 90   # пазим последните ~3 месеца дневни резултати
+DAYTRADE_LOG_MAX_ENTRIES = 180   # пазим последните ~6 месеца дневни резултати (за календара на таблото)
 
 
 # ---------------- ntfy.sh известия ----------------
@@ -317,20 +327,67 @@ def load_previous_daytrade_log():
         return []
 
 
-def upsert_daytrade_log(log, date_str, strategy_key, strategy_label, realized_pl, trades_closed):
+def upsert_daytrade_log(log, date_str, strategy_key, strategy_label, realized_pl, trades_closed, trades=None):
     """Добавя/обновява записа за дадена дата (ако вече има запис за същия
-    ден — презаписва го, вместо да дублира)."""
+    ден — презаписва го, вместо да дублира). "trades" е списък с реалните
+    покупки/продажби от деня — показва се в календара на таблото, като
+    цъкнеш на конкретен ден."""
     entry = {
         "date": date_str,
         "strategy": strategy_key,
         "strategy_label": strategy_label,
         "realized_pl": round(realized_pl, 2),
         "trades_closed": trades_closed,
+        "trades": trades or [],
     }
     log = [e for e in log if e.get("date") != date_str]
     log.append(entry)
     log.sort(key=lambda e: e.get("date", ""))
     return log[-DAYTRADE_LOG_MAX_ENTRIES:]
+
+
+def build_daytrade_trades(today_orders, active_strategy_key):
+    """Възстановява РЕАЛНИТЕ покупки/продажби за деня директно от
+    поръчките в Alpaca (а не от моментна снимка на unrealized_pl) — така
+    хващаме коректно и случаите, в които Stop-loss/Take-profit се е
+    задействал сам по средата на деня (преди принудителното затваряне).
+    Връща (trades, realized_pl_total, closed_count)."""
+    prefix = f"daytrade-{active_strategy_key}-"
+    buys = {}
+    for o in today_orders:
+        coid = o.get("client_order_id") or ""
+        if not coid.startswith(prefix):
+            continue
+        if o.get("side") != "buy" or o.get("status") != "filled":
+            continue
+        symbol = o.get("symbol")
+        price = _safe_float(o.get("filled_avg_price"))
+        qty = _safe_float(o.get("qty"))
+        if symbol and price and qty:
+            buys[symbol] = {"qty": qty, "price": price}
+
+    trades = []
+    realized_pl_total = 0.0
+    closed_count = 0
+    for symbol, buy in buys.items():
+        trades.append({"type": "buy", "symbol": symbol, "qty": buy["qty"], "price": round(buy["price"], 2)})
+        sell_price, sell_qty = None, 0.0
+        for o in today_orders:
+            if o.get("symbol") != symbol or o.get("side") != "sell" or o.get("status") != "filled":
+                continue
+            p = _safe_float(o.get("filled_avg_price"))
+            q = _safe_float(o.get("qty"))
+            if p and q:
+                sell_price = p
+                sell_qty += q
+        if sell_price is not None and sell_qty > 0:
+            pl = (sell_price - buy["price"]) * sell_qty
+            trades.append({"type": "sell", "symbol": symbol, "qty": sell_qty, "price": round(sell_price, 2), "pl": round(pl, 2)})
+            realized_pl_total += pl
+            closed_count += 1
+
+    trades.sort(key=lambda t: (t["symbol"], t["type"]))
+    return trades, round(realized_pl_total, 2), closed_count
 
 
 # ---------------- Status snapshot (за статичното табло) ----------------
@@ -545,12 +602,11 @@ def run_daytrade_entries(strategy, equity, held_symbols, traded_today, today_str
 
 
 def force_close_daytrade_positions(held_symbols, positions_by_symbol):
-    """Затваря всички отворени днешни day-trade позиции и връща и
-    приблизителна реализирана П/З (взета от unrealized_pl точно преди
-    затварянето — market поръчките изпълняват много близо до тази цена,
-    достатъчно точно за сравнение между стратегиите)."""
+    """Затваря всички отворени днешни day-trade позиции. Реализираната
+    П/З за деня НЕ се смята тук — смята се отделно, от реалните fill-ове
+    на поръчките (виж build_daytrade_trades), защото е по-точна (хваща и
+    SL/TP, които са се задействали сами по-рано през деня)."""
     closed, errors = [], []
-    realized_pl_total = 0.0
     for symbol in held_symbols & set(DAYTRADE_WATCHLIST):
         try:
             orders = get_orders_for_symbol_today(symbol)
@@ -569,14 +625,12 @@ def force_close_daytrade_positions(held_symbols, positions_by_symbol):
                     cancel_order(o["id"])
                 except error.HTTPError:
                     pass  # може вече да е отменена от OCO-своя близнак — ОК
-            pos = positions_by_symbol.get(symbol) or {}
-            realized_pl_total += _safe_float(pos.get("unrealized_pl")) or 0.0
             close_position_market(symbol)
             closed.append(symbol)
             print(f"[daytrade] ЗАТВОРЕНО {symbol} (край на дневния прозорец)")
         except error.HTTPError as e:
             errors.append(f"[daytrade] {symbol}: грешка при затваряне ({e.read().decode()[:150]})")
-    return closed, realized_pl_total, errors
+    return closed, errors
 
 
 # ---------------- Main ----------------
@@ -629,14 +683,24 @@ def run():
 
     # 1) Задължително първо: затваряме просрочени day-trade позиции от днес.
     if should_force_close:
-        closed, realized_pl, errs = force_close_daytrade_positions(held_symbols, positions_by_symbol)
+        closed, errs = force_close_daytrade_positions(held_symbols, positions_by_symbol)
         for s in closed:
             all_trades.append(("daytrade-CLOSE", s, None, None, None, None))
         all_errors.extend(errs)
         held_symbols -= set(closed)
+
+        # Пресмятаме реалните покупки/продажби на деня от прясната поръчкова
+        # история (не от снимка отпреди затварянето) — по-точно.
+        try:
+            fresh_orders = get_today_orders()
+        except error.HTTPError:
+            fresh_orders = today_orders
+        day_trades, day_realized_pl, day_closed_count = build_daytrade_trades(
+            fresh_orders, active_strategy["key"],
+        )
         daytrade_log = upsert_daytrade_log(
             daytrade_log, today_str, active_strategy["key"], active_strategy["label"],
-            realized_pl, len(closed),
+            day_realized_pl, day_closed_count, day_trades,
         )
 
     # 2) Нови входове по активната днешна стратегия — само в прозореца.
