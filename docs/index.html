@@ -28,6 +28,8 @@
     --slot-6: #0e7490; /* daytrade-momentum */
     --slot-7: #7c3aed; /* daytrade-reversal */
     --slot-8: #92400e; /* daytrade-breakout */
+    --slot-9: #be123c; /* spike */
+    --slot-10: #4338ca; /* cheap (под $20) */
   }
   @media (prefers-color-scheme: dark) {
     :root:where(:not([data-theme="light"])) {
@@ -53,6 +55,8 @@
       --slot-6: #22b8cf;
       --slot-7: #9f7aea;
       --slot-8: #c2740f;
+      --slot-9: #fb7185;
+      --slot-10: #818cf8;
     }
   }
   :root[data-theme="dark"] {
@@ -78,6 +82,8 @@
     --slot-6: #22b8cf;
     --slot-7: #9f7aea;
     --slot-8: #c2740f;
+    --slot-9: #fb7185;
+    --slot-10: #818cf8;
   }
 
   * { box-sizing: border-box; }
@@ -157,6 +163,8 @@
   .badge.daytrade-momentum { background: var(--slot-6); }
   .badge.daytrade-reversal { background: var(--slot-7); }
   .badge.daytrade-breakout { background: var(--slot-8); }
+  .badge.spike { background: var(--slot-9); }
+  .badge.cheap { background: var(--slot-10); }
 
   .badge-market { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); }
   .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
@@ -317,6 +325,18 @@
   </div>
 
   <div class="card">
+    <h2>Спайк + Pullback — опционална стратегия 💥</h2>
+    <div class="exp-today-row">
+      <span>Статус:</span>
+      <span id="spikeStatusBadge">—</span>
+    </div>
+    <div class="info-note" style="margin-top:6px;">
+      Отделна, МНОГО по-рискова стратегия — гони акции, скочили рязко (+100%+ за деня спрямо вчера, най-често заради новина/спиране на търговия при малка компания), купува едва след лек pullback от дневния връх. Собствени, по-широки risk параметри (по-малка позиция, SL -10% / TP +20%) — <b>не</b> участва в честното сравнение на трите стратегии по-горе, логва се отделно тук. Изключена е по подразбиране — виж README.md преди да я включиш.
+    </div>
+    <div id="spikeLogWrap" style="margin-top:12px;"><div class="empty-state">Зареждане…</div></div>
+  </div>
+
+  <div class="card">
     <h2>Отворени позиции</h2>
     <div id="positionsWrap"><div class="empty-state">Зареждане…</div></div>
   </div>
@@ -361,12 +381,20 @@
       </div>
 
     </div>
-    <div class="info-note">Watchlist (и трите): SPY · QQQ · AAPL · MSFT · NVDA · AMZN · GOOGL · META · TSLA · PLTR · AMD · AVGO · SMCI · CRWD · SNOW · ARM · MRVL · ANET · MU · ORCL. Само 1 стратегия е активна на ден (виж картата "Дневен експеримент" по-горе), никога не се пренася позиция за следващия ден.</div>
+    <div class="info-note">Watchlist (и трите): SPY · QQQ · AAPL · MSFT · NVDA · AMZN · GOOGL · META · TSLA · PLTR · AMD · AVGO · SMCI · CRWD · SNOW · ARM · MRVL · ANET · MU · ORCL. Само 1 стратегия е активна на ден (виж картата "Дневен експеримент" по-горе), никога не се пренася позиция за следващия ден. Същите 3 сигнала се прилагат и върху по-евтини акции — виж картата "Под $20" по-долу.</div>
   </div>
 
   <div class="card">
-    <h2>Стари стратегии (вече не отварят нови позиции)</h2>
-    <div class="info-note" style="margin-bottom:10px;">Позициите, отворени от тези преди пивота към day trading, си остават и се управляват от собствените си stop-loss/take-profit поръчки в Alpaca — само таблото ги показва, докато не се затворят.</div>
+    <h2>Под $20 💵 — 4-та day trading добавка</h2>
+    <div class="info-note" style="margin-bottom:10px;">
+      Същите 3 сигнала (каквато е "днешната" активна стратегия по-горе), приложени върху по-евтини/по-волатилни акции — отделен капиталов "джоб", отделни (по-широки) risk параметри: 5% от equity на позиция, Stop-loss -3% / Take-profit +6%, макс. 2 позиции. Same прозорец 16:30–22:30 бг. време, същото принудително затваряне. Watchlist: SOFI · F · SIRI · PBR · VALE · GOLD · KGC · CCL · WBD · SNAP · IQ · GRAB · BBD · RIG · SWN — ботът винаги проверява живата цена преди да купи, така че тикер, качил се над $20, автоматично се прескача.
+    </div>
+    <div id="cheapLogWrap"><div class="empty-state">Зареждане…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Класически стратегии (реактивирани — работят паралелно)</h2>
+    <div class="info-note" style="margin-bottom:10px;">По изрична молба тези 4 пак отварят нови позиции — работят успоредно с day trading системите по-горе. За разлика от тях, НЕ са intraday: позицията се държи с дни/седмици, докато не удари собствения си Stop-loss/Take-profit (Alpaca го управлява сървърно). "ai-daytrade" (картата най-долу) е изключение — тя е заменена завинаги от новите 3 ротиращи се daytrade стратегии и няма да отвори нови позиции пак.</div>
     <div class="strategy-grid">
 
       <div class="strategy-card">
@@ -403,7 +431,7 @@
         <div class="row"><span>Stop-loss / Take-profit</span><b>-2% / +4%</b></div>
         <div class="row"><span>Прозорец (бг. време)</span><b>16:30 – 22:30</b></div>
         <div class="row"><span>Макс. позиции</span><b>2</b></div>
-        <div class="tickers">Заменена от новите 3 ротиращи се daytrade стратегии по-горе.</div>
+        <div class="tickers">Постоянно оттеглена — заменена от новите 3 ротиращи се daytrade стратегии по-горе. За разлика от другите карти в тази секция, тази НЯМА да отваря нови позиции пак.</div>
       </div>
 
       <div class="strategy-card">
@@ -513,6 +541,8 @@
     if (coid.indexOf("daytrade-momentum-") === 0) return "daytrade-momentum";
     if (coid.indexOf("daytrade-reversal-") === 0) return "daytrade-reversal";
     if (coid.indexOf("daytrade-breakout-") === 0) return "daytrade-breakout";
+    if (coid.indexOf("spike-") === 0) return "spike";
+    if (coid.indexOf("cheap-") === 0) return "cheap";
     if (coid.indexOf("ai-daytrade-") === 0) return "ai-daytrade";
     if (coid.indexOf("ai-longterm-") === 0) return "ai-longterm";
     if (coid.indexOf("sp500-longterm-") === 0) return "sp500-longterm";
@@ -534,6 +564,8 @@
     "daytrade-momentum": "моментум",
     "daytrade-reversal": "отскок",
     "daytrade-breakout": "пробив",
+    "spike": "спайк 💥",
+    "cheap": "под $20 💵",
   };
 
   function badge(label, text) {
@@ -859,6 +891,92 @@
     renderCalendarGrid();
   });
 
+  // ---------- "Спайк + Pullback" опционална стратегия ----------
+  function renderSpikeStrategy(enabled, log) {
+    var statusWrap = document.getElementById("spikeStatusBadge");
+    clearChildren(statusWrap);
+    var dot = document.createElement("span");
+    dot.className = "dot " + (enabled ? "open" : "closed");
+    dot.style.marginRight = "6px";
+    statusWrap.appendChild(dot);
+    var txt = document.createElement("span");
+    txt.textContent = enabled ? "Включена" : "Изключена (по подразбиране)";
+    statusWrap.appendChild(txt);
+
+    var wrap = document.getElementById("spikeLogWrap");
+    clearChildren(wrap);
+    if (!log || !log.length) {
+      var empty = document.createElement("div");
+      empty.className = "empty-state";
+      empty.textContent = enabled
+        ? "Още няма сделки от тази стратегия — сигналът е рядък по дизайн (чака рязък скок + pullback)."
+        : "Стратегията е изключена. Виж README.md, ако искаш да я включиш.";
+      wrap.appendChild(empty);
+      return;
+    }
+
+    var table = document.createElement("table");
+    var thead = document.createElement("thead");
+    thead.innerHTML = "<tr><th>Дата</th><th>Символи</th><th class='num'>Сделки</th><th class='num'>Резултат</th></tr>";
+    table.appendChild(thead);
+    var tbody = document.createElement("tbody");
+    log.slice().reverse().forEach(function (entry) {
+      var tr = document.createElement("tr");
+      var tdDate = document.createElement("td"); tdDate.textContent = entry.date || "—";
+      var seen = {}, symbols = [];
+      (entry.trades || []).forEach(function (t) {
+        if (t.symbol && !seen[t.symbol]) { seen[t.symbol] = true; symbols.push(t.symbol); }
+      });
+      var tdSym = document.createElement("td"); tdSym.textContent = symbols.length ? symbols.join(", ") : "—";
+      var tdTrades = document.createElement("td"); tdTrades.className = "num"; tdTrades.textContent = String(entry.trades_closed || 0);
+      var pl = parseFloat(entry.realized_pl || 0);
+      var tdPL = document.createElement("td"); tdPL.className = "num";
+      tdPL.textContent = (pl > 0 ? "+" : "") + fmtMoney(pl);
+      tdPL.style.color = pl > 0 ? "var(--good-text)" : pl < 0 ? "var(--critical)" : "var(--text-primary)";
+      tr.appendChild(tdDate); tr.appendChild(tdSym); tr.appendChild(tdTrades); tr.appendChild(tdPL);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+  }
+
+  // ---------- "Под $20" 4-та day trading добавка (винаги активна) ----------
+  function renderCheapStrategy(log) {
+    var wrap = document.getElementById("cheapLogWrap");
+    clearChildren(wrap);
+    if (!log || !log.length) {
+      var empty = document.createElement("div");
+      empty.className = "empty-state";
+      empty.textContent = "Още няма сделки от тази добавка — ще се появят тук, щом сигнал улучи акция под $20.";
+      wrap.appendChild(empty);
+      return;
+    }
+
+    var table = document.createElement("table");
+    var thead = document.createElement("thead");
+    thead.innerHTML = "<tr><th>Дата</th><th>Символи</th><th class='num'>Сделки</th><th class='num'>Резултат</th></tr>";
+    table.appendChild(thead);
+    var tbody = document.createElement("tbody");
+    log.slice().reverse().forEach(function (entry) {
+      var tr = document.createElement("tr");
+      var tdDate = document.createElement("td"); tdDate.textContent = entry.date || "—";
+      var seen = {}, symbols = [];
+      (entry.trades || []).forEach(function (t) {
+        if (t.symbol && !seen[t.symbol]) { seen[t.symbol] = true; symbols.push(t.symbol); }
+      });
+      var tdSym = document.createElement("td"); tdSym.textContent = symbols.length ? symbols.join(", ") : "—";
+      var tdTrades = document.createElement("td"); tdTrades.className = "num"; tdTrades.textContent = String(entry.trades_closed || 0);
+      var pl = parseFloat(entry.realized_pl || 0);
+      var tdPL = document.createElement("td"); tdPL.className = "num";
+      tdPL.textContent = (pl > 0 ? "+" : "") + fmtMoney(pl);
+      tdPL.style.color = pl > 0 ? "var(--good-text)" : pl < 0 ? "var(--critical)" : "var(--text-primary)";
+      tr.appendChild(tdDate); tr.appendChild(tdSym); tr.appendChild(tdTrades); tr.appendChild(tdPL);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+  }
+
   function renderMarketBadge(status) {
     var dot = document.getElementById("marketDot");
     var text = document.getElementById("marketText");
@@ -901,6 +1019,8 @@
     renderOrders(orders);
     renderDaytradeExperiment(status.daytrade_today_strategy, status.daytrade_log || []);
     renderCalendar(status.daytrade_log || []);
+    renderSpikeStrategy(!!status.spike_strategy_enabled, status.spike_log || []);
+    renderCheapStrategy(status.cheap_log || []);
 
     var updated = status.updated_at ? new Date(status.updated_at).toLocaleString("bg-BG") : "—";
     setText(document.getElementById("lastUpdated"), "Данни към: " + updated + " (обновява се от бота на всеки час)");
