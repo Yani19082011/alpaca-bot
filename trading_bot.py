@@ -17,6 +17,11 @@ ai-longterm, sp500-longterm) бяха РЕАКТИВИРАНИ — сега па
 Старата 5-та ("ai-daytrade") НЕ е реактивирана — заменена е изцяло от
 по-добре обмислените 3 ротиращи се стратегии.
 
+После, по изрична молба, "penny" престана да ползва фиксиран watchlist от
+12 тикера — сега сканира ЖИВО пазара всеки run (виж "PENNY: ЖИВО СКАНИРАНЕ"
+по-долу) и оценява сигнала върху каквото открие, вместо върху предварително
+избрани имена.
+
 Добавена е и 4-та day-trading "под $20" стратегия (виж по-долу) — същите 3
 сигнала, приложени върху по-евтини/по-волатилни акции, с отделен risk
 профил и отделен лог.
@@ -105,8 +110,25 @@ trading-bot.yml) — единствената не-stdlib зависимост, 
 blue-chip, penny, ai-longterm и sp500-longterm пак отварят нови позиции (виж
 LEGACY_STRATEGIES). За разлика от day trading, тук НЯМА принудително
 затваряне — позицията се държи с дни/седмици, докато не удари собствения си
-Stop-loss/Take-profit (управляван сървърно от Alpaca). Параметрите и
-watchlist-овете са същите като преди пивота към day trading (виж README.md).
+Stop-loss/Take-profit (управляван сървърно от Alpaca). blue-chip, ai-longterm
+и sp500-longterm пазят същите фиксирани watchlist-ове както преди пивота към
+day trading (виж README.md).
+
+=================== PENNY: ЖИВО СКАНИРАНЕ (без фиксиран watchlist) ===================
+По изрична молба "penny" вече НЕ е ограничена до предварително избрани 12
+тикера — на всеки run сама открива кандидати чрез Alpaca-ия market-wide
+screener (get_penny_candidates): комбинация от "топ gainers" (движение) и
+"most actives" (обем), т.е. каквото реално се движи/търгува в момента, а не
+статичен списък. Тъй като по този начин кандидатите могат да са буквално
+кои да е акции, PENNY_MAX_PRICE (<$5) и минимален дневен обем в долари
+(PENNY_MIN_DOLLAR_VOLUME) се проверяват ЖИВО за всеки кандидат, преди
+сигналът изобщо да се оцени — това е същият принцип на самокорекция, който
+CHEAP_MAX_PRICE ползва за "под $20" добавката. Ако screener endpoint-ите не
+са достъпни на текущия план/акаунт, сканирането просто се пропуска този
+run, без грешка (същото поведение като при "Спайк + pullback"). Отворени
+penny позиции се броят по client_order_id префикс ("penny-"), НЕ по
+членство в watchlist — иначе позиция, купена от кандидат, който вече не е
+"топ" на следващия run, би "изчезнала" от преброяването.
 
 =================== СПАЙК + PULLBACK (опционална, РЪЧНО активирана) ===================
 Отделна, много по-рискова 4-та стратегия — НЕ участва в честното сравнение
@@ -220,7 +242,8 @@ CHEAP_LOG_MAX_ENTRIES = 180
 # по-добре обмислените 3 ротиращи се day-trade стратегии по-горе, връщането ѝ би било просто
 # по-груба версия на нещо, което вече правим по-добре.
 BLUE_CHIP_WATCHLIST = ["SPY", "QQQ", "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA"]
-PENNY_WATCHLIST = ["HTZ", "PLUG", "UWMC", "OPEN", "NIO", "AMC", "BTBT", "HIVE", "SPCE", "LAC", "EOSE", "BBAI"]
+# "penny" няма повече фиксиран watchlist — виж get_penny_candidates() и
+# докстринга "PENNY: ЖИВО СКАНИРАНЕ" по-горе.
 AI_LT_WATCHLIST = ["PLTR", "AMD", "AVGO", "SMCI", "CRWD", "SNOW", "ARM", "MRVL", "ANET", "MU", "ORCL"]
 SP500_LT_WATCHLIST = ["JPM", "JNJ", "PG", "KO", "XOM", "CVX", "HD", "WMT", "UNH", "V", "MA", "DIS", "PEP", "COST", "MCD", "LLY"]
 
@@ -231,6 +254,9 @@ SP500_LT_POSITION_PCT, SP500_LT_STOP_LOSS_PCT, SP500_LT_TAKE_PROFIT_PCT, SP500_L
 
 PENNY_BREAKOUT_LOOKBACK_DAYS = 20   # "20-дневен breakout"
 PENNY_VOLUME_MULTIPLIER = 1.5       # днешният обем трябва да е поне 1.5x средния за периода
+PENNY_MAX_PRICE = 5.0               # "penny stock" прагът — проверява се ЖИВО от snapshot-а
+PENNY_MIN_DOLLAR_VOLUME = 1_000_000 # минимална дневна ликвидност в долари, за да не купуваме "мъртви" тикери
+PENNY_CANDIDATE_SCAN_TOP = 25       # колко имена да вземем от всеки screener endpoint (movers/most-actives)
 GOLDEN_CROSS_FAST, GOLDEN_CROSS_SLOW = 50, 200   # SMA50 > SMA200 ("златен кръст")
 BLUE_CHIP_FAST, BLUE_CHIP_SLOW = 10, 30          # SMA(10) > SMA(30)
 
@@ -388,6 +414,43 @@ def get_market_movers(top=20):
         if sym:
             symbols.append(sym)
     return symbols
+
+
+def get_most_active_symbols(top=25):
+    """Screener endpoint — топ 'most active' по обем в момента. Ползва се от
+    penny-сканирането (get_penny_candidates), за да намери каквото реално се
+    търгува активно днес, вместо фиксиран списък. Същото graceful-degrade
+    поведение като get_market_movers — при недостъпен endpoint връщаме []."""
+    try:
+        data = _get(f"{DATA_BASE}/v1beta1/screener/stocks/most-actives?top={top}&by=volume")
+    except error.HTTPError as e:
+        print(f"[penny] Screener (most-actives) недостъпен (HTTP {e.code}) — прескачам живото сканиране този run.")
+        return []
+    except Exception as e:
+        print(f"[penny] Неуспешно четене на most-actives: {e}")
+        return []
+    actives = data.get("most_actives", []) if isinstance(data, dict) else []
+    symbols = []
+    for a in actives:
+        sym = a.get("symbol") if isinstance(a, dict) else None
+        if sym:
+            symbols.append(sym)
+    return symbols
+
+
+def get_penny_candidates():
+    """Комбинира 'топ gainers' + 'most actives' в един дедупликиран списък
+    кандидати за живото penny-сканиране — каквото реално се движи/търгува в
+    момента на пазара, вместо фиксирани 12 тикера. Ако и двата screener
+    endpoint-а са недостъпни, връща [] и penny сканирането просто се
+    пропуска този run (без грешка) — същия принцип като при спайк
+    стратегията."""
+    seen, candidates = set(), []
+    for sym in get_market_movers(top=PENNY_CANDIDATE_SCAN_TOP) + get_most_active_symbols(top=PENNY_CANDIDATE_SCAN_TOP):
+        if sym not in seen:
+            seen.add(sym)
+            candidates.append(sym)
+    return candidates
 
 
 def parse_alpaca_ts(ts):
@@ -780,7 +843,12 @@ def blue_chip_signal(bars):
 
 def penny_signal(bars, snapshot):
     """20-дневен breakout (текущата цена пробива над 20-дневния максимум) +
-    обем-потвърждение (днешният обем е поне 1.5x средния за периода)."""
+    обем-потвърждение (днешният обем е поне 1.5x средния за периода).
+    Кандидатите идват от живо сканиране (get_penny_candidates), не от
+    фиксиран watchlist, затова тук ЖИВО се проверяват и PENNY_MAX_PRICE
+    (<$5) и минимална дневна ликвидност (PENNY_MIN_DOLLAR_VOLUME) —
+    иначе screener-ът би могъл да предложи каквото и да е, не само
+    истински penny stocks."""
     if len(bars) < PENNY_BREAKOUT_LOOKBACK_DAYS:
         return False
     recent = bars[-PENNY_BREAKOUT_LOOKBACK_DAYS:]
@@ -793,8 +861,10 @@ def penny_signal(bars, snapshot):
         today_volume = snapshot["dailyBar"]["v"]
     except (KeyError, TypeError):
         return False
-    if not price:
-        return False
+    if not price or price > PENNY_MAX_PRICE:
+        return False  # вече не е "penny" — прескачаме тихо
+    if today_volume * price < PENNY_MIN_DOLLAR_VOLUME:
+        return False  # твърде неликвидно
     breakout_level = max(highs)
     avg_volume = sum(volumes) / len(volumes)
     return price > breakout_level and avg_volume > 0 and today_volume > avg_volume * PENNY_VOLUME_MULTIPLIER
@@ -815,7 +885,9 @@ LEGACY_STRATEGIES = [
      "position_pct": BLUE_CHIP_POSITION_PCT, "stop_loss_pct": BLUE_CHIP_STOP_LOSS_PCT,
      "take_profit_pct": BLUE_CHIP_TAKE_PROFIT_PCT, "max_positions": BLUE_CHIP_MAX_POSITIONS,
      "needs_snapshot": False},
-    {"key": "penny", "label": "Penny stocks", "watchlist": PENNY_WATCHLIST,
+    # "watchlist": None — penny няма фиксиран списък, кандидатите идват ЖИВО
+    # всеки run от get_penny_candidates() (виж run_legacy_entries по-долу).
+    {"key": "penny", "label": "Penny stocks", "watchlist": None,
      "position_pct": PENNY_POSITION_PCT, "stop_loss_pct": PENNY_STOP_LOSS_PCT,
      "take_profit_pct": PENNY_TAKE_PROFIT_PCT, "max_positions": PENNY_MAX_POSITIONS,
      "needs_snapshot": True},
@@ -932,9 +1004,13 @@ def force_close_daytrade_positions(held_symbols, positions_by_symbol):
 
 # ---------------- Легаси стратегии: вход (БЕЗ принудително затваряне — swing, не intraday) ----------------
 
-def count_open_legacy_positions(held_symbols, watchlist, prefix):
+def count_open_legacy_positions(held_symbols, prefix):
+    """Брои по client_order_id префикс, върху ВСИЧКИ държани символи — НЕ
+    само върху watchlist. Важно за 'penny': кандидатите идват от живо
+    сканиране, различно всеки run, затова позиция, купена вчера от символ,
+    който днес вече не е сред 'топ' кандидатите, пак трябва да се преброи."""
     count = 0
-    for symbol in held_symbols & set(watchlist):
+    for symbol in held_symbols:
         try:
             orders = get_recent_orders_for_symbol(symbol)
         except error.HTTPError:
@@ -947,11 +1023,20 @@ def count_open_legacy_positions(held_symbols, watchlist, prefix):
 def run_legacy_entries(strategy, equity, held_symbols, traded_today, today_str):
     trades_made, errors = [], []
     prefix = f"{strategy['key']}-"
-    slots_free = strategy["max_positions"] - count_open_legacy_positions(held_symbols, strategy["watchlist"], prefix)
+    slots_free = strategy["max_positions"] - count_open_legacy_positions(held_symbols, prefix)
     if slots_free <= 0:
         return trades_made, errors
 
-    for symbol in strategy["watchlist"]:
+    if strategy["watchlist"] is None:
+        # "penny" — живо сканиране вместо фиксиран watchlist (виж докстринга
+        # "PENNY: ЖИВО СКАНИРАНЕ" горе). Ако screener-ите са недостъпни,
+        # get_penny_candidates() връща [] и цикълът просто не прави нищо
+        # този run — без грешка.
+        candidate_symbols = get_penny_candidates()
+    else:
+        candidate_symbols = strategy["watchlist"]
+
+    for symbol in candidate_symbols:
         if len(trades_made) >= slots_free:
             break
         if symbol in held_symbols or symbol in traded_today:
