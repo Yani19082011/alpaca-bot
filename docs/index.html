@@ -412,7 +412,7 @@
         <div class="row"><span>Позиция</span><b>3% от equity</b></div>
         <div class="row"><span>Stop-loss / Take-profit</span><b>-10% / +20%</b></div>
         <div class="row"><span>Макс. позиции</span><b>2</b></div>
-        <div class="tickers">HTZ · PLUG · UWMC · OPEN · NIO · AMC · BTBT · HIVE · SPCE · LAC · EOSE · BBAI</div>
+        <div class="tickers">Без фиксиран watchlist — ботът сканира ЖИВО пазара всеки run (Alpaca screener: топ gainers + most active), филтрирано за цена под $5 и минимална дневна ликвидност. Каквото реално се движи днес, не предварително избрани имена.</div>
       </div>
 
       <div class="strategy-card">
@@ -462,6 +462,11 @@
   "use strict";
 
   var WATCHLIST = ["SPY","QQQ","AAPL","MSFT","NVDA","AMZN","GOOGL","META","TSLA"];
+  // "penny" вече няма живо поддържан watchlist в бота (сканира пазара
+  // динамично) — този списък е замразен, само за fallback класификация на
+  // стари позиции, купени преди промяната. Новите penny- позиции винаги се
+  // разпознават по client_order_id префикса (виж labelFromCoid по-долу),
+  // независимо дали символът е в този списък.
   var PENNY_WATCHLIST = ["HTZ","PLUG","UWMC","OPEN","NIO","AMC","BTBT","HIVE","SPCE","LAC","EOSE","BBAI"];
   var AI_WATCHLIST = ["PLTR","AMD","AVGO","SMCI","CRWD","SNOW","ARM","MRVL","ANET","MU","ORCL"];
   var SP500_WATCHLIST = ["JPM","JNJ","PG","KO","XOM","CVX","HD","WMT","UNH","V","MA","DIS","PEP","COST","MCD","LLY"];
