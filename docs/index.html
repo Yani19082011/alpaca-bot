@@ -301,18 +301,6 @@
   </div>
 
   <div class="card">
-    <h2>Дневен експеримент — 3 daytrade стратегии</h2>
-    <div class="exp-today-row">
-      <span>Днешната активна стратегия:</span>
-      <span id="todayStrategyBadge">—</span>
-    </div>
-    <div class="info-note" style="margin-top:6px;">
-      Ботът ротира между 3 стратегии — по 1 на ден (детерминирано по датата, не на случаен принцип): <b>Моментум 🚀</b> (купува сила), <b>Отскок 🔄</b> (купува слабост, залага на bounce), <b>Пробив 📈</b> (купува нов дневен връх). Риск параметрите (позиция %, SL, TP) са ЕДНАКВИ и за трите — сравнението е честно, разликата е само в сигнала. Всяка вечер резултатът от затворените позиции се записва тук, за да видим след няколко дни коя работи най-добре.
-    </div>
-    <div id="daytradeLogWrap" style="margin-top:12px;"><div class="empty-state">Зареждане…</div></div>
-  </div>
-
-  <div class="card">
     <h2>Календар — П/З по дни</h2>
     <div class="cal-nav">
       <button class="cal-nav-btn" id="calPrevBtn" type="button">← Пред. месец</button>
@@ -351,46 +339,8 @@
   </div>
 
   <div class="card">
-    <h2>🔥 Активни стратегии — 3-дневна ротация (day trading)</h2>
-    <div class="strategy-grid">
-
-      <div class="strategy-card">
-        <div class="title"><span class="badge daytrade-momentum">momentum</span><strong>Моментум 🚀</strong></div>
-        <div class="row"><span>Сигнал</span><b>Цена &gt; +1.5% от open + обем</b></div>
-        <div class="row"><span>Позиция</span><b>6% от equity</b></div>
-        <div class="row"><span>Stop-loss / Take-profit</span><b>-2% / +4%</b></div>
-        <div class="row"><span>Прозорец (бг. време)</span><b>16:30 – 22:30</b></div>
-        <div class="row"><span>Макс. позиции</span><b>2</b></div>
-        <div class="tickers">Купува СИЛА — залага на продължение на движението нагоре.</div>
-      </div>
-
-      <div class="strategy-card">
-        <div class="title"><span class="badge daytrade-reversal">reversal</span><strong>Отскок 🔄</strong></div>
-        <div class="row"><span>Сигнал</span><b>Цена &lt; -1.5% от open, но над дневния min + обем</b></div>
-        <div class="row"><span>Позиция</span><b>6% от equity</b></div>
-        <div class="row"><span>Stop-loss / Take-profit</span><b>-2% / +4%</b></div>
-        <div class="row"><span>Прозорец (бг. време)</span><b>16:30 – 22:30</b></div>
-        <div class="row"><span>Макс. позиции</span><b>2</b></div>
-        <div class="tickers">Купува СЛАБОСТ, която спира да пада — залага на bounce, обратно на momentum.</div>
-      </div>
-
-      <div class="strategy-card">
-        <div class="title"><span class="badge daytrade-breakout">breakout</span><strong>Пробив 📈</strong></div>
-        <div class="row"><span>Сигнал</span><b>Цена на/близо дневния max, той &gt; +0.5% от open + обем</b></div>
-        <div class="row"><span>Позиция</span><b>6% от equity</b></div>
-        <div class="row"><span>Stop-loss / Take-profit</span><b>-2% / +4%</b></div>
-        <div class="row"><span>Прозорец (бг. време)</span><b>16:30 – 22:30</b></div>
-        <div class="row"><span>Макс. позиции</span><b>2</b></div>
-        <div class="tickers">Купува ПРОБИВ на нов дневен връх — залага на продължение след пробив.</div>
-      </div>
-
-    </div>
-    <div class="info-note">Watchlist (и трите): SPY · QQQ · AAPL · MSFT · NVDA · AMZN · GOOGL · META · TSLA · PLTR · AMD · AVGO · SMCI · CRWD · SNOW · ARM · MRVL · ANET · MU · ORCL. Само 1 стратегия е активна на ден (виж картата "Дневен експеримент" по-горе), никога не се пренася позиция за следващия ден.</div>
-  </div>
-
-  <div class="card">
-    <h2>Класически стратегии (реактивирани — работят паралелно)</h2>
-    <div class="info-note" style="margin-bottom:10px;">По изрична молба тези стратегии отварят нови позиции успоредно с day trading системите по-горе. НЕ са intraday: позицията се държи с дни/седмици, докато не удари собствения си Stop-loss/Take-profit (Alpaca го управлява сървърно). Единни риск параметри и за трите: <b>Stop-loss -15% / Take-profit +7%</b> — по изрична молба, за да продават по-рано на печалба и да имат по-широк буфер на загуба при "нормалните компании". Сигналите вече не са голи SMA пресичания — по изрична молба са подобрени с допълнителни потвърждения (виж описанията по-долу), за да не влизат на вече отслабващ кръст. "penny" вече не съществува като отделна легаси стратегия — обединена е в новата "Halt + Пробив" (виж картата по-горе). "ai-daytrade" също не е реактивирана — заменена е изцяло от 3-те ротиращи се day-trade стратегии по-горе.</div>
+    <h2>Класически стратегии</h2>
+    <div class="info-note" style="margin-bottom:10px;">Единствените стратегии, освен "Halt + Пробив" (виж картата по-горе), които ботът изпълнява — по изрична молба day-trading ротацията беше премахната напълно. НЕ са intraday: позицията се държи с дни/седмици, докато не удари собствения си Stop-loss/Take-profit (Alpaca го управлява сървърно). Единни риск параметри и за трите: <b>Stop-loss -15% / Take-profit +7%</b> — по изрична молба, за да продават по-рано на печалба и да имат по-широк буфер на загуба при "нормалните компании". Сигналите вече не са голи SMA пресичания — по изрична молба са подобрени с допълнителни потвърждения (виж описанията по-долу), за да не влизат на вече отслабващ кръст. "penny" вече не съществува като отделна легаси стратегия — обединена е в новата "Halt + Пробив" (виж картата по-горе).</div>
     <div class="strategy-grid">
 
       <div class="strategy-card">
@@ -409,16 +359,6 @@
         <div class="row"><span>Stop-loss / Take-profit</span><b>-15% / +7%</b></div>
         <div class="row"><span>Макс. позиции</span><b>3</b></div>
         <div class="tickers">PLTR · AMD · AVGO · SMCI · CRWD · SNOW · ARM · MRVL · ANET · MU · ORCL · TSM · ASML · LRCX · AMAT · KLAC · DELL · PANW · FTNT · DDOG · NET · ZS</div>
-      </div>
-
-      <div class="strategy-card">
-        <div class="title"><span class="badge ai-daytrade">ai-daytrade</span><strong>AI сектор — дневна търговия</strong></div>
-        <div class="row"><span>Сигнал</span><b>+1.5% от днешния open + обем</b></div>
-        <div class="row"><span>Позиция</span><b>6% от equity</b></div>
-        <div class="row"><span>Stop-loss / Take-profit</span><b>-2% / +4%</b></div>
-        <div class="row"><span>Прозорец (бг. време)</span><b>16:30 – 22:30</b></div>
-        <div class="row"><span>Макс. позиции</span><b>2</b></div>
-        <div class="tickers">Постоянно оттеглена — заменена от новите 3 ротиращи се daytrade стратегии по-горе. За разлика от другите карти в тази секция, тази НЯМА да отваря нови позиции пак.</div>
       </div>
 
       <div class="strategy-card">
@@ -535,7 +475,10 @@
   }
 
   // Основен начин на разпознаване — по префикса на client_order_id.
-  // Работи еднакво добре за легаси стратегиите и за новите 3 daytrade.
+  // "daytrade-*"/"ai-daytrade-" вече не се създават от бота (day-trading
+  // ротацията беше премахната напълно), но стари вече отворени позиции/
+  // поръчки с тях трябва пак да се разпознаят коректно, докато не се
+  // затворят — същия принцип като "spike-"/"cheap-" по-долу.
   function labelFromCoid(coid) {
     coid = coid || "";
     if (coid.indexOf("daytrade-momentum-") === 0) return "daytrade-momentum";
@@ -692,70 +635,6 @@
     wrap.appendChild(table);
   }
 
-  var STRATEGY_KEY_TO_BADGE = {
-    momentum: "daytrade-momentum",
-    reversal: "daytrade-reversal",
-    breakout: "daytrade-breakout",
-  };
-
-  function renderDaytradeExperiment(todayStrategy, log) {
-    var todayEl = document.getElementById("todayStrategyBadge");
-    clearChildren(todayEl);
-    if (todayStrategy && todayStrategy.key) {
-      todayEl.appendChild(badge(STRATEGY_KEY_TO_BADGE[todayStrategy.key] || "—", todayStrategy.label || undefined));
-    } else {
-      todayEl.textContent = "—";
-    }
-
-    var wrap = document.getElementById("daytradeLogWrap");
-    clearChildren(wrap);
-    if (!log.length) {
-      var empty = document.createElement("div");
-      empty.className = "empty-state";
-      empty.textContent = "Още няма записани дни от експеримента — ще се появят тук след първия завършен daytrade ден.";
-      wrap.appendChild(empty);
-      return;
-    }
-
-    var table = document.createElement("table");
-    var thead = document.createElement("thead");
-    thead.innerHTML = "<tr><th>Дата</th><th>Стратегия</th><th class='num'>Сделки</th><th class='num'>Резултат</th></tr>";
-    table.appendChild(thead);
-    var tbody = document.createElement("tbody");
-    log.slice().reverse().forEach(function (entry) {
-      var tr = document.createElement("tr");
-      var tdDate = document.createElement("td"); tdDate.textContent = entry.date || "—";
-      var tdStrat = document.createElement("td");
-      tdStrat.appendChild(badge(STRATEGY_KEY_TO_BADGE[entry.strategy] || "—", entry.strategy_label || undefined));
-      var tdTrades = document.createElement("td"); tdTrades.className = "num"; tdTrades.textContent = String(entry.trades_closed || 0);
-      var pl = parseFloat(entry.realized_pl || 0);
-      var tdPL = document.createElement("td"); tdPL.className = "num"; tdPL.textContent = fmtMoney(pl);
-      tdPL.style.color = pl > 0 ? "var(--good-text)" : pl < 0 ? "var(--critical)" : "var(--text-primary)";
-      tr.appendChild(tdDate); tr.appendChild(tdStrat); tr.appendChild(tdTrades); tr.appendChild(tdPL);
-      tbody.appendChild(tr);
-    });
-    table.appendChild(tbody);
-    wrap.appendChild(table);
-
-    if (log.length >= 2) {
-      var sums = {}, counts = {}, labelsByKey = {};
-      log.forEach(function (e) {
-        sums[e.strategy] = (sums[e.strategy] || 0) + parseFloat(e.realized_pl || 0);
-        counts[e.strategy] = (counts[e.strategy] || 0) + 1;
-        labelsByKey[e.strategy] = e.strategy_label || e.strategy;
-      });
-      var summary = document.createElement("div");
-      summary.className = "info-note";
-      summary.style.marginTop = "10px";
-      var parts = Object.keys(sums).map(function (key) {
-        var avg = sums[key] / counts[key];
-        return labelsByKey[key] + ": ср. " + fmtMoney(avg) + "/ден (" + counts[key] + " дни)";
-      });
-      summary.textContent = "Обобщение: " + parts.join(" · ");
-      wrap.appendChild(summary);
-    }
-  }
-
   // ---------- календар с дневни резултати ----------
   var CAL_MONTH_NAMES = ["Януари", "Февруари", "Март", "Април", "Май", "Юни", "Юли", "Август", "Септември", "Октомври", "Ноември", "Декември"];
   var calState = { year: null, month: null, logByDate: {}, selectedDate: null };
@@ -763,25 +642,18 @@
   function calPad2(n) { return n < 10 ? "0" + n : String(n); }
   function calDateStr(year, month, day) { return year + "-" + calPad2(month + 1) + "-" + calPad2(day); }
 
-  // Обединява трите лога (daytrade_log + legacy_log + halt_log) по дата —
-  // за деня, в който клетката на календара се цъква, показваме ВСИЧКО
-  // купено/продадено този ден, независимо коя стратегия го е направила,
-  // всяка сделка тагната с точната си стратегия. daytrade_log пази
-  // отделни buy/sell редове (intraday); legacy_log/halt_log пазят вече
-  // готови round-trip сделки (купено+продадено), тъй като тези стратегии
-  // не са intraday и могат да се затворят дни/седмици по-късно.
-  function buildCalendarIndex(daytradeLog, legacyLog, haltLog) {
+  // Обединява двата лога (legacy_log + halt_log) по дата — за деня, в
+  // който клетката на календара се цъква, показваме ВСИЧКО купено/продадено
+  // този ден, независимо коя стратегия го е направила, всяка сделка тагната
+  // с точната си стратегия. Двата лога пазят вече готови round-trip сделки
+  // (купено+продадено), тъй като тези стратегии не са intraday и могат да
+  // се затворят дни/седмици по-късно.
+  function buildCalendarIndex(legacyLog, haltLog) {
     var byDate = {};
     function ensure(date) {
       if (!byDate[date]) byDate[date] = { date: date, totalPL: 0, sources: [] };
       return byDate[date];
     }
-    (daytradeLog || []).forEach(function (e) {
-      if (!e || !e.date) return;
-      var d = ensure(e.date);
-      d.totalPL += parseFloat(e.realized_pl || 0);
-      d.sources.push({ kind: "daytrade", entry: e });
-    });
     (legacyLog || []).forEach(function (e) {
       if (!e || !e.date) return;
       var d = ensure(e.date);
@@ -797,8 +669,8 @@
     return byDate;
   }
 
-  function renderCalendar(daytradeLog, legacyLog, haltLog) {
-    var byDate = buildCalendarIndex(daytradeLog, legacyLog, haltLog);
+  function renderCalendar(legacyLog, haltLog) {
+    var byDate = buildCalendarIndex(legacyLog, haltLog);
     calState.logByDate = byDate;
     if (calState.year === null) {
       var now = new Date();
@@ -857,40 +729,22 @@
     renderCalendarDetail();
   }
 
-  // Превръща смесените "sources" (daytrade buy/sell редове + legacy/halt
-  // round-trip сделки) в еднакви редове за таблицата — всеки ред пази коя
-  // точно стратегия го е направила.
+  // Превръща "sources" (legacy/halt round-trip сделки) в еднакви редове за
+  // таблицата — всеки ред пази коя точно стратегия го е направила.
   function normalizeCalendarRows(sources) {
     var rows = [];
     (sources || []).forEach(function (src) {
-      if (src.kind === "daytrade") {
-        var e = src.entry;
-        var badgeLabel = STRATEGY_KEY_TO_BADGE[e.strategy] || "—";
-        var badgeText = e.strategy_label || undefined;
-        (e.trades || []).forEach(function (t) {
-          rows.push({
-            symbol: t.symbol,
-            badgeLabel: badgeLabel,
-            badgeText: badgeText,
-            action: t.type === "buy" ? "Купено" : "Продадено",
-            qty: t.qty,
-            price: t.price,
-            pl: (t.type === "sell" && typeof t.pl === "number") ? t.pl : null,
-          });
+      (src.entry.trades || []).forEach(function (t) {
+        rows.push({
+          symbol: t.symbol,
+          badgeLabel: t.strategy || "—",
+          badgeText: t.strategy_label || undefined,
+          action: "Купено @ " + fmtMoney(t.entry_price) + " → продадено @ " + fmtMoney(t.exit_price),
+          qty: t.qty,
+          price: t.exit_price,
+          pl: typeof t.pl === "number" ? t.pl : null,
         });
-      } else {
-        (src.entry.trades || []).forEach(function (t) {
-          rows.push({
-            symbol: t.symbol,
-            badgeLabel: t.strategy || "—",
-            badgeText: t.strategy_label || undefined,
-            action: "Купено @ " + fmtMoney(t.entry_price) + " → продадено @ " + fmtMoney(t.exit_price),
-            qty: t.qty,
-            price: t.exit_price,
-            pl: typeof t.pl === "number" ? t.pl : null,
-          });
-        });
-      }
+      });
     });
     return rows;
   }
@@ -969,8 +823,7 @@
 
   // ---------- "Halt + Пробив" опционална стратегия ----------
   // Затворените сделки идват от halt_log (build_roundtrip_log в бота) —
-  // всяка сделка вече е round-trip (купено+продадено), а не отделни
-  // buy/sell редове както при daytrade_log.
+  // всяка сделка вече е round-trip (купено+продадено).
   function renderHaltStrategy(enabled, log) {
     var statusWrap = document.getElementById("haltStatusBadge");
     clearChildren(statusWrap);
@@ -1060,8 +913,7 @@
     renderKPIs(account, positions);
     renderPositions(positions, orders);
     renderOrders(orders);
-    renderDaytradeExperiment(status.daytrade_today_strategy, status.daytrade_log || []);
-    renderCalendar(status.daytrade_log || [], status.legacy_log || [], status.halt_log || []);
+    renderCalendar(status.legacy_log || [], status.halt_log || []);
     renderHaltStrategy(!!status.halt_strategy_enabled, status.halt_log || []);
 
     var updated = status.updated_at ? new Date(status.updated_at).toLocaleString("bg-BG") : "—";
