@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Alpaca Paper Trading Bot — hourly runner, ЕКСПЕРИМЕНТ с 3 ротиращи се
-day-trading стратегии.
+Alpaca Paper Trading Bot — hourly runner. Само swing-style стратегии
+(легаси "нормални" компании + Halt + Пробив) — БЕЗ day trading.
 
 Изпълнява се от GitHub Actions (безплатен cron, пълен интернет достъп) —
 не от Claude, защото Claude-облачните среди нямат мрежов достъп до Alpaca.
@@ -9,13 +9,13 @@ day-trading стратегии.
 =================== ИСТОРИЯ НА ПРОМЕНИТЕ (най-новото най-долу) ===================
 По-рано ботът въртеше 5 различни стратегии едновременно (blue-chip, penny,
 ai-longterm, ai-daytrade, sp500-longterm). После, по изрично желание, беше
-преминат към САМО day trading (3 ротиращи се стратегии, виж по-долу).
+преминат към САМО day trading (3 ротиращи се стратегии — momentum/
+reversal/breakout).
 
 После, по НОВА изрична молба, 4-те легаси стратегии (blue-chip, penny,
-ai-longterm, sp500-longterm) бяха РЕАКТИВИРАНИ — сега пак отварят нови
-позиции, паралелно с day trading системите (виж "ЛЕГАСИ СТРАТЕГИИ" по-долу).
-Старата 5-та ("ai-daytrade") НЕ е реактивирана — заменена е изцяло от
-по-добре обмислените 3 ротиращи се стратегии.
+ai-longterm, sp500-longterm) бяха РЕАКТИВИРАНИ — отваряха нови позиции
+паралелно с day trading системите. Старата 5-та ("ai-daytrade") НЕ беше
+реактивирана.
 
 После, по изрична молба, "penny" престана да ползва фиксиран watchlist от
 12 тикера — сканираше ЖИВО пазара всеки run и оценяваше сигнала върху
@@ -42,8 +42,7 @@ ai-longterm, sp500-longterm) бяха РЕАКТИВИРАНИ — сега па
      day trading, тези позиции може да се затворят по всяко време (не само
      "днес"), затова дневникът се възстановява от ПЪЛНАТА поръчкова история,
      не само от днешната. Календарът на таблото вече показва обединено
-     всичко, купено/продадено на даден ден — от коя да е стратегия — не
-     само 3-те ротиращи се day-trade стратегии.
+     всичко, купено/продадено на даден ден — от коя да е стратегия.
 
 После, по НОВА изрична молба, стана следното:
   1) blue-chip/ai-longterm/sp500-longterm вече имат ПОДОБРЕНИ сигнали, не
@@ -63,50 +62,15 @@ ai-longterm, sp500-longterm) бяха РЕАКТИВИРАНИ — сега па
      преди), макс. 2 позиции (не 3), и добавен таван HALT_MAX_PRICE = $20 —
      стратегията е за penny/евтини акции, не за каквото и да е скочило.
 
-=================== 3-ДНЕВЕН ЕКСПЕРИМЕНТ ===================
-За да разберем коя day-trading идея работи най-добре, ботът РОТИРА между
-3 различни сигнала — по един активен на ден (детерминирано по датата, не
-по случаен избор, за да е едно и също цял ден дори ботът да се пуска
-многократно):
-
-  🚀 momentum  — купува СИЛА: цена > +1.5% спрямо днешния open + обем
-                 потвърждение. Залага на продължение на движението.
-
-  🔄 reversal  — купува СЛАБОСТ, която спира да пада: цена е поне -1.5%
-                 от open (истинска слабост), но вече не прави нови дъна
-                 (малко над днешния минимум) + обем. Залага на отскок —
-                 обратна теза на momentum.
-
-  📈 breakout  — купува ПРОБИВ: цената е на/близо до дневния максимум,
-                 при условие че самият връх вече е забележимо над open
-                 (не е плосък ден) + обем. Залага на продължение след
-                 пробив на съпротива.
-
-Умишлено ВСИЧКИ параметри за риск (позиция %, stop-loss, take-profit,
-брой позиции, прозорец) са ЕДНАКВИ за трите — единствената разлика е
-СИГНАЛЪТ за вход. Това прави сравнението честно: ако една стратегия
-изкара по-добър резултат, причината е сигналът, не различен риск профил.
-
-Всеки ден ботът записва резултата (реализирана печалба/загуба от
-затворените тази стратегия позиции) в docs/status.json → "daytrade_log",
-което се пази между run-овете (файлът се чете и допълва, не се
-презаписва от нулата всеки път) — така след 3+ дни има реална статистика
-за сравнение, видима директно на таблото.
-
-За всеки ден в "daytrade_log" се пази и списък "trades" с реалните
-покупки/продажби (символ, кол-во, цена, П/З) — таблото го показва в
-календар (по 1 клетка на ден, оцветена според резултата), а с клик на
-конкретен ден се вижда точно какво е купил/продал ботът тогава. Тези
-сделки НЕ се вземат от моментна снимка при затварянето, а се
-възстановяват от реалната поръчкова история в Alpaca (виж
-build_daytrade_trades) — това хваща коректно и случаите, в които
-Stop-loss/Take-profit се е задействал сам по средата на деня, преди
-принудителното затваряне в края на прозореца.
-
-Прозорец: 16:30–22:30 ч. българско време. ЗАДЪЛЖИТЕЛНО се затваря всичко
-до края на прозореца (или ако остават <20 мин. до затварянето на
-борсата) — никога не се пренася за следващия ден. Позициите се
-разпознават по client_order_id префикс "daytrade-{стратегия}-".
+После, по НОВА изрична молба, 3-дневната day-trading ротация (momentum/
+reversal/breakout) беше ПРЕМАХНАТА НАПЪЛНО — потребителят прецени, че
+"day trading" не е това, което иска ботът да прави. Останаха само
+swing-style стратегиите: легаси "нормалните компании" (blue-chip/
+ai-longterm/sp500-longterm) и Halt + Пробив (виж по-долу за двете). Заедно
+с това отпадна и цялата логика за времеви прозорец/принудително затваряне
+в края на деня (DT_WINDOW_*, in_window, should_force_close) — тя
+съществуваше единствено заради day trading; легаси и Halt стратегиите
+никога не са се затваряли принудително.
 
 СТАТИЧНО ТАБЛО (docs/index.html, публикувано през GitHub Pages): при
 всеки run скриптът записва docs/status.json (equity, позиции, поръчки,
@@ -121,7 +85,8 @@ browser заявки към paper-api.alpaca.markets).
 ако отвори суровия файл директно на GitHub. Таблото пита за парола и
 декриптира в браузъра (Web Crypto API), без паролата да напуска
 компютъра на потребителя. Ботът и декриптира предишния файл (за да
-продължи "daytrade_log" историята между run-овете), и криптира новия.
+продължи "legacy_log"/"halt_log" историята между run-овете), и криптира
+новия.
 
 Изисква следните environment variables (GitHub Actions secrets):
   ALPACA_API_KEY_ID
@@ -246,35 +211,9 @@ STATUS_PATH = "docs/status.json"
 # Ако си нулирал/презаредил акаунта с друга сума, смени числото тук.
 STARTING_BALANCE = 100_000.0
 
-# ==================== Day trading watchlist (споделен от трите стратегии) ====================
-# Ликвидни, достатъчно волатилни имена — блу-чипове/ETF-и + AI/tech сектор.
-DAYTRADE_WATCHLIST = [
-    "SPY", "QQQ", "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA",
-    "PLTR", "AMD", "AVGO", "SMCI", "CRWD", "SNOW", "ARM", "MRVL", "ANET", "MU", "ORCL",
-]
-
-# ==================== Общи риск параметри (ЕДНАКВИ за трите — честно сравнение) ====================
-DT_MAX_POSITIONS = 2
-DT_POSITION_PCT = 0.06
-DT_STOP_LOSS_PCT = 0.02
-DT_TAKE_PROFIT_PCT = 0.04
-DT_MIN_DOLLAR_VOLUME = 10_000_000       # оборот в $ до момента днес
-DT_WINDOW_START_MIN = 16 * 60 + 30      # 16:30 бг. време
-DT_WINDOW_END_MIN = 22 * 60 + 30        # 22:30 бг. време
-DT_FORCE_CLOSE_BUFFER_MIN = 20          # затваря се 20 мин. преди края
-
-# ==================== Параметри на сигналите ====================
-DT_MOMENTUM_THRESHOLD = 0.015   # ±1.5% спрямо днешния open (ползва се от momentum И reversal)
-DT_REVERSAL_CUSHION = 0.003     # цената трябва да е поне 0.3% над дневния минимум (не "прясно" дъно)
-DT_BREAKOUT_MIN_RANGE = 0.005   # дневният връх трябва да е поне +0.5% над open (не е плосък ден)
-DT_BREAKOUT_MARGIN = 0.002      # цената трябва да е до 0.2% от дневния връх, за да се брои "на върха"
-
-DAYTRADE_LOG_MAX_ENTRIES = 180   # пазим последните ~6 месеца дневни резултати (за календара на таблото)
-
-
-# ==================== Легаси "swing/дългосрочни" стратегии — РЕАКТИВИРАНИ по молба ====================
-# По-рано (при пивота към day trading) тези спряха да отварят нови позиции. По изрична молба
-# сега пак работят — паралелно с day trading системите. За разлика от day trading, тук НЯМА
+# ==================== Легаси "swing/дългосрочни" стратегии ====================
+# blue-chip/ai-longterm/sp500-longterm — единствените стратегии, освен Halt + Пробив, които
+# ботът изпълнява (day-trading ротацията беше премахната напълно по изрична молба). Тук НЯМА
 # принудително затваряне в края на деня — позицията се държи с дни/седмици, докато не удари
 # собствения си Stop-loss/Take-profit (Alpaca го управлява сървърно, независимо от този код).
 #
@@ -288,8 +227,8 @@ DAYTRADE_LOG_MAX_ENTRIES = 180   # пазим последните ~6 месец
 #   sp500-longterm — диверсифицирани value S&P 500 сектори, същия "златен кръст"
 #
 # "penny" (легаси) вече НЕ съществува като отделна легаси стратегия — обединена е в новата
-# "Halt + Пробив" стратегия по-долу. "ai-daytrade" (старата 5-та) също НЕ е реактивирана —
-# заменена е изцяло от 3-те ротиращи се day-trade стратегии по-горе.
+# "Halt + Пробив" стратегия по-долу. Day-trading ротацията (momentum/reversal/breakout) беше
+# премахната напълно по изрична молба — ботът вече изпълнява само swing-style стратегии.
 BLUE_CHIP_WATCHLIST = [
     "SPY", "QQQ", "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA",
     "NFLX", "ADBE", "CRM", "CSCO", "INTC", "IBM", "QCOM", "TXN", "INTU",
@@ -645,105 +584,14 @@ def _encrypt_json(obj, password):
 
 
 def _decrypt_json(enc_b64, password):
-    """Обратното на _encrypt_json — ползва се, за да прочетем "daytrade_log"
-    от ПРЕДИШНИЯ status.json (криптиран) и да продължим историята му."""
+    """Обратното на _encrypt_json — ползва се, за да прочетем "legacy_log"/
+    "halt_log" от ПРЕДИШНИЯ status.json (криптиран) и да продължим историята им."""
     raw = base64.b64decode(enc_b64)
     nonce, ciphertext = raw[:12], raw[12:]
     key = hashlib.sha256(password.encode("utf-8")).digest()
     aesgcm = AESGCM(key)
     plaintext = aesgcm.decrypt(nonce, ciphertext, None)
     return json.loads(plaintext.decode("utf-8"))
-
-
-# ---------------- Дневник на 3-дневния експеримент ----------------
-
-def load_previous_daytrade_log():
-    """Чете (и декриптира, ако трябва) ПРЕДИШНИЯ status.json, само за да
-    извади daytrade_log масива — за да продължи историята между run-овете
-    (иначе всеки run презаписва файла от нулата и губим миналите дни)."""
-    try:
-        with open(STATUS_PATH, "r", encoding="utf-8") as f:
-            raw = json.load(f)
-    except Exception:
-        return []
-    try:
-        if isinstance(raw, dict) and "enc" in raw:
-            if not DASHBOARD_PASSWORD:
-                return []
-            raw = _decrypt_json(raw["enc"], DASHBOARD_PASSWORD)
-        return raw.get("daytrade_log", []) if isinstance(raw, dict) else []
-    except Exception as e:
-        print(f"[daytrade_log] Неуспешно четене на предишен log: {e}")
-        return []
-
-
-def upsert_daytrade_log(log, date_str, strategy_key, strategy_label, realized_pl, trades_closed, trades=None):
-    """Добавя/обновява записа за дадена дата (ако вече има запис за същия
-    ден — презаписва го, вместо да дублира). "trades" е списък с реалните
-    покупки/продажби от деня — показва се в календара на таблото, като
-    цъкнеш на конкретен ден."""
-    entry = {
-        "date": date_str,
-        "strategy": strategy_key,
-        "strategy_label": strategy_label,
-        "realized_pl": round(realized_pl, 2),
-        "trades_closed": trades_closed,
-        "trades": trades or [],
-    }
-    log = [e for e in log if e.get("date") != date_str]
-    log.append(entry)
-    log.sort(key=lambda e: e.get("date", ""))
-    return log[-DAYTRADE_LOG_MAX_ENTRIES:]
-
-
-def _build_trades_by_coid_prefix(today_orders, prefix):
-    """Общ хелпър: възстановява РЕАЛНИТЕ покупки/продажби за деня директно
-    от поръчките в Alpaca (а не от моментна снимка на unrealized_pl) — така
-    хващаме коректно и случаите, в които Stop-loss/Take-profit се е
-    задействал сам по средата на деня (преди принудителното затваряне).
-    Връща (trades, realized_pl_total, closed_count). Ползва се от
-    build_daytrade_trades (единствената intraday стратегия — легаси/halt
-    ползват отделния build_roundtrip_trades по-долу, тъй като не се
-    затварят в рамките на деня)."""
-    buys = {}
-    for o in today_orders:
-        coid = o.get("client_order_id") or ""
-        if not coid.startswith(prefix):
-            continue
-        if o.get("side") != "buy" or o.get("status") != "filled":
-            continue
-        symbol = o.get("symbol")
-        price = _safe_float(o.get("filled_avg_price"))
-        qty = _safe_float(o.get("qty"))
-        if symbol and price and qty:
-            buys[symbol] = {"qty": qty, "price": price}
-
-    trades = []
-    realized_pl_total = 0.0
-    closed_count = 0
-    for symbol, buy in buys.items():
-        trades.append({"type": "buy", "symbol": symbol, "qty": buy["qty"], "price": round(buy["price"], 2)})
-        sell_price, sell_qty = None, 0.0
-        for o in today_orders:
-            if o.get("symbol") != symbol or o.get("side") != "sell" or o.get("status") != "filled":
-                continue
-            p = _safe_float(o.get("filled_avg_price"))
-            q = _safe_float(o.get("qty"))
-            if p and q:
-                sell_price = p
-                sell_qty += q
-        if sell_price is not None and sell_qty > 0:
-            pl = (sell_price - buy["price"]) * sell_qty
-            trades.append({"type": "sell", "symbol": symbol, "qty": sell_qty, "price": round(sell_price, 2), "pl": round(pl, 2)})
-            realized_pl_total += pl
-            closed_count += 1
-
-    trades.sort(key=lambda t: (t["symbol"], t["type"]))
-    return trades, round(realized_pl_total, 2), closed_count
-
-
-def build_daytrade_trades(today_orders, active_strategy_key):
-    return _build_trades_by_coid_prefix(today_orders, f"daytrade-{active_strategy_key}-")
 
 
 def _load_previous_log_field(field_name):
@@ -788,18 +636,16 @@ def _upsert_simple_log(log, date_str, trades, realized_pl, trades_closed, max_en
 
 
 def build_roundtrip_trades(all_orders, prefix_label_map):
-    """Възстановява ЗАТВОРЕНИ (купено+продадено) сделки за не-intraday
-    стратегии (легаси/halt) от ПЪЛНАТА поръчкова история (не само днешната
-    — тези позиции може да стоят седмици). За разлика от
-    _build_trades_by_coid_prefix (за day trading, само 'днес'), тук всяка
-    сделка пази коя точно стратегия я е отворила и датата, на която РЕАЛНО
-    се е затворила (не 'днес') — затварянето става само от Alpaca-ия
-    bracket SL/TP, по всяко време. `prefix_label_map` е {ключ: етикет},
-    напр. {"blue-chip": "Blue-chip", ...} — символ се приписва на стратегия
-    по client_order_id префикса на КУПУВАЩАТА поръчка; продаващата поръчка
-    НЕ носи същия coid (Alpaca генерира нов за bracket изходите), затова се
-    съпоставя само по символ, хронологично — същия принцип като
-    _build_trades_by_coid_prefix."""
+    """Възстановява ЗАТВОРЕНИ (купено+продадено) сделки за swing стратегии
+    (легаси/halt) от ПЪЛНАТА поръчкова история (не само днешната — тези
+    позиции може да стоят седмици). Всяка сделка пази коя точно стратегия
+    я е отворила и датата, на която РЕАЛНО се е затворила (не 'днес') —
+    затварянето става само от Alpaca-ия bracket SL/TP, по всяко време.
+    `prefix_label_map` е {ключ: етикет}, напр. {"blue-chip": "Blue-chip",
+    ...} — символ се приписва на стратегия по client_order_id префикса на
+    КУПУВАЩАТА поръчка; продаващата поръчка НЕ носи същия coid (Alpaca
+    генерира нов за bracket изходите), затова се съпоставя само по символ,
+    хронологично, спазвайки времевия ред на поръчките."""
     orders_sorted = sorted(
         (o for o in all_orders if o.get("status") == "filled"),
         key=lambda o: o.get("filled_at") or o.get("submitted_at") or "",
@@ -867,7 +713,7 @@ def build_roundtrip_log(all_orders, previous_log, prefix_label_map, max_entries)
 
 # ---------------- Status snapshot (за статичното табло) ----------------
 
-def write_status_snapshot(clock, account, positions, orders, daytrade_log=None, today_strategy=None, legacy_log=None, halt_log=None):
+def write_status_snapshot(clock, account, positions, orders, legacy_log=None, halt_log=None):
     """Записва компактна JSON снимка в STATUS_PATH — commit-ва се обратно в
     repo-то от workflow-а, за да може docs/index.html (GitHub Pages) да я
     прочете директно, без API ключове и без CORS проблем."""
@@ -892,8 +738,6 @@ def write_status_snapshot(clock, account, positions, orders, daytrade_log=None, 
             "market_open": bool(clock.get("is_open")),
             "next_open": clock.get("next_open"),
             "next_close": clock.get("next_close"),
-            "daytrade_today_strategy": today_strategy,
-            "daytrade_log": daytrade_log or [],
             "halt_strategy_enabled": HALT_ENABLED,
             "legacy_log": legacy_log or [],
             "halt_log": halt_log or [],
@@ -951,67 +795,7 @@ def write_status_snapshot(clock, account, positions, orders, daytrade_log=None, 
         print(f"[status] Неуспешен запис на snapshot: {e}")
 
 
-# ---------------- Трите day-trading сигнала ----------------
-
-def momentum_signal(snapshot):
-    """🚀 Купува СИЛА: цена > +1.5% спрямо днешния open, с обем-потвърждение.
-    Залага на продължение на движението (следва тренда)."""
-    try:
-        price = snapshot["latestTrade"]["p"]
-        today_open = snapshot["dailyBar"]["o"]
-        today_volume = snapshot["dailyBar"]["v"]
-    except (KeyError, TypeError):
-        return False
-    if not today_open or not price:
-        return False
-    momentum = (price - today_open) / today_open
-    dollar_volume = today_volume * price
-    return momentum > DT_MOMENTUM_THRESHOLD and dollar_volume > DT_MIN_DOLLAR_VOLUME
-
-
-def reversal_signal(snapshot):
-    """🔄 Купува СЛАБОСТ, която спира да пада: цената е поне -1.5% от open
-    (истинска слабост), но вече не прави нови дъна (малко над днешния
-    минимум) + обем. Залага на отскок — обратна теза на momentum."""
-    try:
-        price = snapshot["latestTrade"]["p"]
-        today_open = snapshot["dailyBar"]["o"]
-        today_low = snapshot["dailyBar"]["l"]
-        today_volume = snapshot["dailyBar"]["v"]
-    except (KeyError, TypeError):
-        return False
-    if not today_open or not price or not today_low:
-        return False
-    drop_from_open = (price - today_open) / today_open
-    cushion_above_low = (price - today_low) / today_low
-    dollar_volume = today_volume * price
-    return (
-        drop_from_open < -DT_MOMENTUM_THRESHOLD
-        and cushion_above_low > DT_REVERSAL_CUSHION
-        and dollar_volume > DT_MIN_DOLLAR_VOLUME
-    )
-
-
-def breakout_signal(snapshot):
-    """📈 Купува ПРОБИВ: цената е на/близо до дневния максимум, при
-    условие че самият връх вече е забележимо над open (не е плосък ден)
-    + обем. Залага на продължение след пробив на съпротива."""
-    try:
-        price = snapshot["latestTrade"]["p"]
-        today_open = snapshot["dailyBar"]["o"]
-        today_high = snapshot["dailyBar"]["h"]
-        today_volume = snapshot["dailyBar"]["v"]
-    except (KeyError, TypeError):
-        return False
-    if not today_open or not price or not today_high:
-        return False
-    high_move = (today_high - today_open) / today_open
-    near_high = price >= today_high * (1 - DT_BREAKOUT_MARGIN)
-    dollar_volume = today_volume * price
-    return high_move > DT_BREAKOUT_MIN_RANGE and near_high and dollar_volume > DT_MIN_DOLLAR_VOLUME
-
-
-# ---------------- Легаси сигнали (SMA / breakout — реактивирани стратегии) ----------------
+# ---------------- Легаси сигнали (SMA — swing стратегии) ----------------
 
 def sma(closes, period):
     """Проста пълзяща средна на последните `period` стойности (най-новата — последна)."""
@@ -1097,106 +881,6 @@ LEGACY_STRATEGIES = [
 
 LEGACY_PREFIX_LABELS = {s["key"]: s["label"] for s in LEGACY_STRATEGIES}
 HALT_PREFIX_LABELS = {"halt": "Halt + Пробив 💥"}
-
-
-DAYTRADE_STRATEGIES = [
-    {"key": "momentum", "label": "Моментум 🚀", "signal_fn": momentum_signal},
-    {"key": "reversal", "label": "Отскок 🔄", "signal_fn": reversal_signal},
-    {"key": "breakout", "label": "Пробив 📈", "signal_fn": breakout_signal},
-]
-
-
-def todays_strategy(sofia_now):
-    """Детерминирана ротация по календарна дата (не по случаен избор) —
-    така активната стратегия е една и съща цял ден, дори ботът да се
-    пуска многократно."""
-    idx = sofia_now.toordinal() % len(DAYTRADE_STRATEGIES)
-    return DAYTRADE_STRATEGIES[idx]
-
-
-# ---------------- Day trading: вход и принудително затваряне ----------------
-
-def count_open_daytrade_positions(held_symbols):
-    count = 0
-    for symbol in held_symbols & set(DAYTRADE_WATCHLIST):
-        try:
-            orders = get_orders_for_symbol_today(symbol)
-        except error.HTTPError:
-            continue
-        if any(o.get("client_order_id", "").startswith("daytrade-") and o.get("status") == "filled" for o in orders):
-            count += 1
-    return count
-
-
-def run_daytrade_entries(strategy, equity, held_symbols, traded_today, today_str):
-    trades_made, errors = [], []
-    dt_open_count = count_open_daytrade_positions(held_symbols)
-    slots_free = DT_MAX_POSITIONS - dt_open_count
-    if slots_free <= 0:
-        return trades_made, errors
-
-    for symbol in DAYTRADE_WATCHLIST:
-        if len(trades_made) >= slots_free:
-            break
-        if symbol in held_symbols or symbol in traded_today:
-            continue  # вече държан (от стар/легаси позиция или другаде) — прескачаме
-        try:
-            snap = get_snapshot(symbol)
-        except error.HTTPError as e:
-            errors.append(f"[{strategy['key']}] {symbol}: грешка при snapshot ({e.read().decode()[:150]})")
-            continue
-        if not strategy["signal_fn"](snap):
-            continue
-        current_price = snap["latestTrade"]["p"]
-        budget = equity * DT_POSITION_PCT
-        qty = int(budget // current_price)
-        if qty < 1:
-            continue
-        coid = f"daytrade-{strategy['key']}-{symbol}-{today_str}"
-        try:
-            place_entry_order(symbol, qty, current_price, DT_STOP_LOSS_PCT, DT_TAKE_PROFIT_PCT, client_order_id=coid)
-            trades_made.append((strategy["label"], symbol, qty, current_price, DT_STOP_LOSS_PCT, DT_TAKE_PROFIT_PCT))
-            print(
-                f"[{strategy['label']}] КУПЕНО: {qty} x {symbol} @ ~{current_price:.2f} "
-                f"(SL -{DT_STOP_LOSS_PCT*100:.0f}% / TP +{DT_TAKE_PROFIT_PCT*100:.0f}%) "
-                f"— ще се затвори до края на прозореца"
-            )
-        except error.HTTPError as e:
-            errors.append(f"[{strategy['key']}] {symbol}: грешка при поръчка ({e.read().decode()[:150]})")
-
-    return trades_made, errors
-
-
-def force_close_daytrade_positions(held_symbols, positions_by_symbol):
-    """Затваря всички отворени днешни day-trade позиции. Реализираната
-    П/З за деня НЕ се смята тук — смята се отделно, от реалните fill-ове
-    на поръчките (виж build_daytrade_trades), защото е по-точна (хваща и
-    SL/TP, които са се задействали сами по-рано през деня)."""
-    closed, errors = [], []
-    for symbol in held_symbols & set(DAYTRADE_WATCHLIST):
-        try:
-            orders = get_orders_for_symbol_today(symbol)
-        except error.HTTPError as e:
-            errors.append(f"[daytrade] {symbol}: грешка при проверка ({e.read().decode()[:150]})")
-            continue
-        is_daytrade = any(
-            o.get("client_order_id", "").startswith("daytrade-") and o.get("status") == "filled"
-            for o in orders
-        )
-        if not is_daytrade:
-            continue
-        try:
-            for o in get_open_orders_for_symbol(symbol):
-                try:
-                    cancel_order(o["id"])
-                except error.HTTPError:
-                    pass  # може вече да е отменена от OCO-своя близнак — ОК
-            close_position_market(symbol)
-            closed.append(symbol)
-            print(f"[daytrade] ЗАТВОРЕНО {symbol} (край на дневния прозорец)")
-        except error.HTTPError as e:
-            errors.append(f"[daytrade] {symbol}: грешка при затваряне ({e.read().decode()[:150]})")
-    return closed, errors
 
 
 # ---------------- Легаси стратегии: вход (БЕЗ принудително затваряне — swing, не intraday) ----------------
@@ -1584,7 +1268,6 @@ def run():
     account = get_account()
     positions = get_positions()
     today_orders = get_today_orders()
-    daytrade_log = load_previous_daytrade_log()
     legacy_log = load_previous_legacy_log()
     halt_log = load_previous_halt_log()
 
@@ -1601,82 +1284,35 @@ def run():
 
     now = parse_alpaca_ts(clock["timestamp"])
     sofia_now = now.astimezone(SOFIA_TZ)
-    active_strategy = todays_strategy(sofia_now)
-    active_strategy_info = {"key": active_strategy["key"], "label": active_strategy["label"]}
 
-    write_status_snapshot(
-        clock, account, positions, today_orders,
-        daytrade_log=daytrade_log, today_strategy=active_strategy_info, legacy_log=legacy_log, halt_log=halt_log,
-    )
+    write_status_snapshot(clock, account, positions, today_orders, legacy_log=legacy_log, halt_log=halt_log)
 
     if not clock.get("is_open"):
         print(f"Пазарът е затворен (next open: {clock.get('next_open')}). Нищо за правене.")
         return
 
-    next_close = parse_alpaca_ts(clock["next_close"])
-    minutes_to_close = (next_close - now).total_seconds() / 60.0
-
-    sofia_minutes = sofia_now.hour * 60 + sofia_now.minute
-    in_window = DT_WINDOW_START_MIN <= sofia_minutes <= DT_WINDOW_END_MIN
-    near_window_end = sofia_minutes >= (DT_WINDOW_END_MIN - DT_FORCE_CLOSE_BUFFER_MIN)
-    near_market_close = minutes_to_close <= DT_FORCE_CLOSE_BUFFER_MIN
-    should_force_close = near_window_end or near_market_close
-
     today_str = now.strftime("%Y-%m-%d")
     equity = float(account["equity"])
     held_symbols = {p["symbol"] for p in positions}
-    positions_by_symbol = {p["symbol"]: p for p in positions}
     traded_today = {o["symbol"] for o in today_orders}
 
     print(
         f"Equity: {equity:.2f} | Позиции: {len(positions)} | Sofia {sofia_now.strftime('%H:%M')} | "
-        f"стратегия днес: {active_strategy['label']} | window: {in_window} | force-close: {should_force_close} | "
         f"halt: {'вкл.' if HALT_ENABLED else 'изкл.'}"
     )
 
     all_trades, all_errors = [], []
 
-    # 1) Задължително първо: затваряме просрочени day-trade позиции от днес.
-    #    Легаси swing стратегиите и Halt+Пробив НЕ се пипат тук — те се
-    #    държат докато не ударят своя SL/TP (виж стъпки 2-4 по-долу).
-    if should_force_close:
-        closed, errs = force_close_daytrade_positions(held_symbols, positions_by_symbol)
-        for s in closed:
-            all_trades.append(("daytrade-CLOSE", s, None, None, None, None))
-        all_errors.extend(errs)
-        held_symbols -= set(closed)
-
-        # Пресмятаме реалните покупки/продажби на деня от прясната поръчкова
-        # история (не от снимка отпреди затварянето) — по-точно.
-        try:
-            fresh_orders = get_today_orders()
-        except error.HTTPError:
-            fresh_orders = today_orders
-        day_trades, day_realized_pl, day_closed_count = build_daytrade_trades(
-            fresh_orders, active_strategy["key"],
-        )
-        daytrade_log = upsert_daytrade_log(
-            daytrade_log, today_str, active_strategy["key"], active_strategy["label"],
-            day_realized_pl, day_closed_count, day_trades,
-        )
-
-    # 2) Нови входове по активната днешна стратегия — само в прозореца (day trading).
-    if in_window and not should_force_close:
-        trades, errors = run_daytrade_entries(active_strategy, equity, held_symbols, traded_today, today_str)
-        all_trades.extend(trades)
-        all_errors.extend(errors)
-        held_symbols |= {t[1] for t in trades}
-
-    # 3) Легаси swing стратегии (blue-chip/ai-longterm/sp500-longterm) — НЕ са
-    #    intraday, работят докато пазарът е отворен, независимо от day-trading прозореца.
-    #    Никога не се затварят принудително — държат се докато не ударят своя SL/TP.
+    # 1) Легаси swing стратегии (blue-chip/ai-longterm/sp500-longterm) — работят
+    #    докато пазарът е отворен. Никога не се затварят принудително — държат се
+    #    докато не ударят своя SL/TP (управляван сървърно от Alpaca).
     for strategy in LEGACY_STRATEGIES:
         trades, errors = run_legacy_entries(strategy, equity, held_symbols, traded_today, today_str)
         all_trades.extend(trades)
         all_errors.extend(errors)
         held_symbols |= {t[1] for t in trades}
 
-    # 4) Halt + Пробив — също swing-style (без принудително затваряне),
+    # 2) Halt + Пробив — също swing-style (без принудително затваряне),
     #    работи докато пазарът е отворен, ако е включена (SPIKE_STRATEGY_ENABLED secret).
     if HALT_ENABLED:
         halt_trades, halt_errors = run_halt_entries(equity, held_symbols, traded_today, today_str)
@@ -1684,24 +1320,19 @@ def run():
         all_errors.extend(halt_errors)
         held_symbols |= {t[1] for t in halt_trades}
 
-    # Финална снимка — след сделките/затварянията и с обновения дневник.
-    if all_trades or should_force_close:
+    # Финална снимка — след сделките и с обновения дневник.
+    if all_trades:
         try:
             write_status_snapshot(
                 clock, get_account(), get_positions(), get_today_orders(),
-                daytrade_log=daytrade_log, today_strategy=active_strategy_info,
                 legacy_log=legacy_log, halt_log=halt_log,
             )
         except error.HTTPError as e:
             print(f"[status] Неуспешно финално обновяване: {e}")
 
-    if all_trades:
-        lines = [f"🤖 Alpaca бот — {len(all_trades)} събитие(я) [{active_strategy['label']}]:"]
+        lines = [f"🤖 Alpaca бот — {len(all_trades)} събитие(я):"]
         for label, symbol, qty, price, sl, tp in all_trades:
-            if label == "daytrade-CLOSE":
-                lines.append(f"  • ЗАТВОРЕНО {symbol} (край на дневния прозорец)")
-            else:
-                lines.append(f"  • [{label}] КУПЕНО {qty} x {symbol} @ ~{price:.2f} (SL -{sl*100:.0f}% / TP +{tp*100:.0f}%)")
+            lines.append(f"  • [{label}] КУПЕНО {qty} x {symbol} @ ~{price:.2f} (SL -{sl*100:.0f}% / TP +{tp*100:.0f}%)")
         lines.append(f"Equity: ${equity:,.2f}")
         send_notification("\n".join(lines))
     if all_errors:
