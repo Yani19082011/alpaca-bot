@@ -32,6 +32,7 @@ jobs:
           ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
+          SPIKE_STRATEGY_ENABLED: ${{ secrets.SPIKE_STRATEGY_ENABLED }}
         run: python3 trading_bot.py
 
       - name: Commit updated status snapshot
